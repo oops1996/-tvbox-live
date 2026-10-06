@@ -34,9 +34,26 @@ CCTV17,http://117.169.120.223:8080/hwrr.jx.chinamobile.com/PLTV/88888888/224/322
 江西经济生活,http://117.169.120.223:8080/hwrr.jx.chinamobile.com/PLTV/88888888/224/3221226206/index.m3u8?fmt=ts2hls
 江西少儿,http://117.169.120.223:8080/hwrr.jx.chinamobile.com/PLTV/88888888/224/3221226194/index.m3u8?fmt=ts2hls
 
-影视频道,#genre#
+电影电视剧,#genre#
 NewTV超级电影,http://117.169.120.223:8080/hwrr.jx.chinamobile.com/PLTV/88888888/224/3221225766/index.m3u8
 NewTV超级电视剧,http://117.169.120.223:8080/hwrr.jx.chinamobile.com/PLTV/88888888/224/3221225765/index.m3u8
 NewTV欢乐剧场,http://117.169.120.223:8080/hwrr.jx.chinamobile.com/PLTV/88888888/224/3221226210/index.m3u8
 NewTV动作电影,http://117.169.120.223:8080/hwrr.jx.chinamobile.com/PLTV/88888888/224/3221225671/index.m3u8
 NewTV古装剧场,http://117.169.120.223:8080/hwrr.jx.chinamobile.com/PLTV/88888888/224/3221225678/index.m3u8
+NewTV家庭剧场,http://117.169.120.223:8080/hwrr.jx.chinamobile.com/PLTV/88888888/224/3221225713/index.m3u8
+NewTV明星大片,http://117.169.120.223:8080/hwrr.jx.chinamobile.com/PLTV/88888888/224/3221225716/index.m3u8
+NewTV爱情喜剧,http://117.169.120.223:8080/hwrr.jx.chinamobile.com/PLTV/88888888/224/3221225748/index.m3u8
+NewTV精品大剧,http://117.169.120.223:8080/hwrr.jx.chinamobile.com/PLTV/88888888/224/3221225714/index.m3u8
+NewTV东北热剧,http://117.169.120.223:8080/hwrr.jx.chinamobile.com/PLTV/88888888/224/3221226202/index.m3u8
+NewTV军旅剧场,http://117.169.120.223:8080/hwrr.jx.chinamobile.com/PLTV/88888888/224/3221225669/index.m3u8
+黑莓电影,http://117.169.120.223:8080/hwrr.jx.chinamobile.com/PLTV/88888888/224/3221225764/index.m3u8
+
+综艺纪录,#genre#
+NewTV超级综艺,http://117.169.120.223:8080/hwrr.jx.chinamobile.com/PLTV/88888888/224/3221225768/index.m3u8
+NewTV金牌综艺,http://117.169.120.223:8080/hwrr.jx.chinamobile.com/PLTV/88888888/224/3221225711/index.m3u8
+NewTV精品纪录,http://117.169.120.223:8080/hwrr.jx.chinamobile.com/PLTV/88888888/224/3221225710/index.m3u8
+上海纪实人文,http://117.169.120.223:8080/hwrr.jx.chinamobile.com/PLTV/88888888/224/3221225655/index.m3u8
+
+体育,#genre#
+NewTV超级体育,http://117.169.120.223:8080/hwrr.jx.chinamobile.com/PLTV/88888888/224/3221225767/index.m3u8
+NewTV精品体育,http://117.169.120.223:8080/hwrr.jx.chinamobile.com/PLTV/88888888/224/3221225709/index.m3u8
