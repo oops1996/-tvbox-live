@@ -1,0 +1,59 @@
+{
+  "wallpaper": "",
+  "spider": "",
+  "sites": [],
+  "lives": [
+    {
+      "name": "南昌移动直播",
+      "type": 0,
+      "url": "https://raw.githubusercontent.com/oops1996/-tvbox-live/main/live.txt",
+      "playerType": 1,
+      "ua": "okhttp/3.12.13"
+    }
+  ],
+  "parses": [],
+  "flags": [
+    "youku",
+    "qq",
+    "iqiyi",
+    "qiyi",
+    "mgtv",
+    "letv",
+    "sohu",
+    "pptv",
+    "migu",
+    "wasu"
+  ],
+  "ijk": [
+    {
+      "group": "软解码",
+      "options": [
+        {
+          "category": 4,
+          "name": "opensles",
+          "value": "0"
+        },
+        {
+          "category": 4,
+          "name": "overlay-format",
+          "value": "842225234"
+        },
+        {
+          "category": 4,
+          "name": "framedrop",
+          "value": "1"
+        },
+        {
+          "category": 4,
+          "name": "soundtouch",
+          "value": "1"
+        },
+        {
+          "category": 4,
+          "name": "start-on-prepared",
+          "value": "1"
+        }
+      ]
+    }
+  ]
+}
