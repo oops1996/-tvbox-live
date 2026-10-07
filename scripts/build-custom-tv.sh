@@ -11,6 +11,10 @@ git -C "$SRC" fetch --depth 1 origin "$UPSTREAM_SHA"
 git -C "$SRC" checkout --detach FETCH_HEAD
 python3 "$CUSTOM_DIR/scripts/customize-tv.py" "$SRC" --repo "$CUSTOM_DIR"
 cd "$SRC"
+# 上游把 FreeBox 配对弹窗布局只放在 mobile flavor，但对应 Java 类位于 main，leanback 构建会缺少 ViewBinding。
+mkdir -p app/src/leanback/res/layout
+cp app/src/mobile/res/layout/dialog_free_box_pairing.xml app/src/leanback/res/layout/dialog_free_box_pairing.xml
+
 python3 - <<'PY'
 from pathlib import Path
 p = Path("gradle/wrapper/gradle-wrapper.properties")
