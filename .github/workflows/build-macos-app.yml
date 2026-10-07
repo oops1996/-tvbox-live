@@ -1,0 +1,49 @@
+name: Build 家庭电视 macOS
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - "macos/FamilyTV/**"
+      - ".github/workflows/build-macos-app.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: macos-14
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build arm64 app
+        shell: bash
+        run: |
+          set -e
+          APP="build/家庭电视.app"
+          mkdir -p "$APP/Contents/MacOS"
+          cp macos/FamilyTV/Info.plist "$APP/Contents/Info.plist"
+
+          xcrun swiftc             -target arm64-apple-macos13.0             -O             macos/FamilyTV/Sources/*.swift             -o "$APP/Contents/MacOS/FamilyTV"             -framework SwiftUI             -framework AppKit             -framework AVKit             -framework AVFoundation             -framework Foundation
+
+          chmod +x "$APP/Contents/MacOS/FamilyTV"
+          codesign --force --deep --sign - "$APP"
+
+      - name: Create DMG
+        shell: bash
+        run: |
+          mkdir -p dist
+          hdiutil create             -volname "家庭电视"             -srcfolder "build/家庭电视.app"             -ov             -format UDZO             "dist/家庭电视-macOS-arm64.dmg"
+
+      - name: Upload macOS build
+        uses: actions/upload-artifact@v4
+        with:
+          name: 家庭电视-macOS-arm64
+          path: |
+            build/家庭电视.app
+            dist/家庭电视-macOS-arm64.dmg
+          retention-days: 30
+          if-no-files-found: error
