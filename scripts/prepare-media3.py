@@ -31,7 +31,24 @@ def prepare(src):
             if not archive.testzip() is None:
                 raise RuntimeError("Corrupt Media3 archive: " + module)
         pom_url = "https://dl.google.com/dl/android/maven2/androidx/media3/" + module + "/" + version + "/" + filename + ".pom"
-        pom = download(pom_url, item["pom_sha256"])
+        if item.get("custom_pom"):
+            # This UI companion is specific to the FongMi fork, so Google has
+            # no published POM. Its common/OkHttp/Gson dependencies are explicit.
+            dependencies = "".join(
+                "<dependency><groupId>" + group + "</groupId><artifactId>" + name
+                + "</artifactId><version>" + value + "</version></dependency>"
+                for group, name, value in [
+                    ("androidx.media3", "media3-common", version),
+                    ("com.squareup.okhttp3", "okhttp", "4.12.0"),
+                    ("com.google.code.gson", "gson", "2.13.2"),
+                ])
+            pom = ("<project><modelVersion>4.0.0</modelVersion>"
+                   "<groupId>androidx.media3</groupId><artifactId>" + module
+                   + "</artifactId><version>" + version
+                   + "</version><packaging>aar</packaging><dependencies>"
+                   + dependencies + "</dependencies></project>").encode()
+        else:
+            pom = download(pom_url, item["pom_sha256"])
         (directory / (filename + ".aar")).write_bytes(aar)
         (directory / (filename + ".pom")).write_bytes(pom)
         print("Verified custom dependency: " + module + " " + version)

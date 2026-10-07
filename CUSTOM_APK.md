@@ -33,7 +33,7 @@
 
 固定上游：`OttoHX/kknifer7_TV-K` 的 `189b4a58d49d332d2ce8267921f7cab5b813ea5c`。构建脚本不批量删除旧目录，每轮使用独立目录，补丁目标不匹配时立即失败。
 
-播放器依赖：定制 Media3 `1.10.1`，固定来源 `tongxunlu/2026-07-09-fongmi-with-media3@3f3f7dfa3def514d66b75526044f9377a64eb597`。10 个定制模块及 Google Maven 依赖描述逐个校验 SHA-256，记录在 `scripts/media3-lock.json`；DASH、RTSP、SmoothStreaming 使用同版本官方模块。保留上游字幕大小/位置、Surface/Texture 渲染切换、解码选择和广告切片处理方法，避免标准依赖缺少定制 API。
+播放器依赖：定制 Media3 `1.10.1`，固定来源 `tongxunlu/2026-07-09-fongmi-with-media3@3f3f7dfa3def514d66b75526044f9377a64eb597`。11 个定制模块逐个校验 SHA-256，标准模块的 Google Maven 依赖描述也核对校验值，记录在 `scripts/media3-lock.json`；DASH、RTSP、SmoothStreaming 使用同版本官方模块。保留上游字幕大小/位置、Surface/Texture 渲染切换、解码选择和广告切片处理方法，避免标准依赖缺少定制 API。
 
 GitHub Actions 工作流：`.github/workflows/build-tv-apk.yml`。默认读取权限，只上传构建 Artifacts，不创建公开 Release，不修改账号权限。
 

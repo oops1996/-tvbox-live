@@ -52,6 +52,11 @@
       "module": "media3-ui",
       "aar_sha256": "1458a14f5254b18e889acdf46c8af6d456b90368e24bd0813350db92b25a2eb9",
       "pom_sha256": "0ff8e0446d08286e20d50f03f467bd6b42070efe7d8c5bda82889ea626246949"
+    },
+    {
+      "module": "media3-ui-danmaku",
+      "aar_sha256": "33ad9950e77b59560dac095115ec49c3fb88437d25382b8b3480337bb892abf9",
+      "custom_pom": true
     }
   ]
 }

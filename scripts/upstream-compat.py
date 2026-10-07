@@ -57,6 +57,7 @@ media3 = """
     implementation 'androidx.media3:media3-exoplayer-smoothstreaming:' + media3Version
     implementation 'androidx.media3:media3-extractor:' + media3Version
     implementation 'androidx.media3:media3-ui:' + media3Version
+    implementation 'androidx.media3:media3-ui-danmaku:' + media3Version
 """
 if "androidx.media3:media3-exoplayer:" not in s:
     s = s.replace("dependencies {", "dependencies {" + media3)
