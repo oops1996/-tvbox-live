@@ -58,6 +58,23 @@ p = Path("app/build.gradle")
 s = p.read_text(encoding="utf-8")
 s = s.replace('applicationId "io.kknifer7.android.tv"', 'applicationId "com.oops.tv"')
 s = s.replace('versionName "1.0.0 (Based on FongMi TV 4.9.9)"', 'versionName "1.0.0 家庭电视"')
+
+# 上游源码使用 AndroidX Media3，但镜像 build.gradle 未声明对应依赖，补齐播放器模块。
+media3 = """
+    implementation 'androidx.media3:media3-common:' + media3Version
+    implementation 'androidx.media3:media3-database:' + media3Version
+    implementation 'androidx.media3:media3-datasource:' + media3Version
+    implementation 'androidx.media3:media3-datasource-okhttp:' + media3Version
+    implementation 'androidx.media3:media3-exoplayer:' + media3Version
+    implementation 'androidx.media3:media3-exoplayer-dash:' + media3Version
+    implementation 'androidx.media3:media3-exoplayer-hls:' + media3Version
+    implementation 'androidx.media3:media3-exoplayer-rtsp:' + media3Version
+    implementation 'androidx.media3:media3-exoplayer-smoothstreaming:' + media3Version
+    implementation 'androidx.media3:media3-extractor:' + media3Version
+    implementation 'androidx.media3:media3-ui:' + media3Version
+"""
+if "androidx.media3:media3-exoplayer:" not in s:
+    s = s.replace("dependencies {", "dependencies {" + media3)
 p.write_text(s, encoding="utf-8")
 
 # 2) 首次启动时自动写入用户自己的总配置；关闭上游应用自动更新
