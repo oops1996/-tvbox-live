@@ -9,6 +9,9 @@ rm -rf "$SRC"
 git clone --depth 1 "$UPSTREAM" "$SRC"
 cd "$SRC"
 
+# GitHub Actions 上使用 Gradle 官方分发源，避免区域镜像不可用
+sed -i 's#https\\://mirrors.cloud.tencent.com/gradle/#https\\://services.gradle.org/distributions/#' gradle/wrapper/gradle-wrapper.properties || true
+
 python3 - <<'PY'
 from pathlib import Path
 
