@@ -23,6 +23,25 @@ s = p.read_text(encoding="utf-8")
 s = s.replace('<string name="app_name">TV-K</string>', '<string name="app_name">家庭电视</string>')
 p.write_text(s, encoding="utf-8")
 
+# 补齐播放器样式所需 attrs，避免上游 AAR 在新版 Android Gradle Plugin 下资源链接失败
+p = Path("app/src/main/res/values/attrs.xml")
+s = p.read_text(encoding="utf-8")
+extra = """
+    <attr name="resize_mode" format="enum">
+        <enum name="fit" value="0" />
+        <enum name="fixed_width" value="1" />
+        <enum name="fixed_height" value="2" />
+        <enum name="fill" value="3" />
+        <enum name="zoom" value="4" />
+    </attr>
+    <attr name="use_artwork" format="boolean" />
+    <attr name="use_controller" format="boolean" />
+    <attr name="keep_content_on_player_reset" format="boolean" />
+"""
+if 'name="resize_mode"' not in s:
+    s = s.replace("</resources>", extra + "\n</resources>")
+p.write_text(s, encoding="utf-8")
+
 p = Path("app/build.gradle")
 s = p.read_text(encoding="utf-8")
 s = s.replace('applicationId "io.kknifer7.android.tv"', 'applicationId "com.oops.tv"')
