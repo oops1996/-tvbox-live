@@ -134,8 +134,10 @@ final class IPTVPlayer: ObservableObject {
         receivedVideo = receivedVideo || (player.media?.statistics.displayedPictures ?? 0) > 0
         switch player.state {
         case .opening, .buffering:
-            isBuffering = true
-            status = "正在缓冲：\(request.name)"
+            // VLCKit caches every buffering event, including 100%, after Playing.
+            // Confirm rendered frames instead of leaving a spinner over running video.
+            isBuffering = !(isPlaying && receivedVideo)
+            status = isBuffering ? "正在缓冲：\(request.name)" : "正在播放：\(request.name)"
         case .playing:
             isBuffering = !receivedVideo
             status = receivedVideo ? "正在播放：\(request.name)" : "正在等待视频画面：\(request.name)"
