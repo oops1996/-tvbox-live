@@ -21,6 +21,9 @@ def replace(path, old, new, count=1):
 def customize(src, repo):
     # Retain the existing Media3/resource compatibility fixes.
     exec((repo / "scripts/upstream-compat.py").read_text(), {"__name__": "compat", "SRC": src})
+    # The custom fork keeps decoder/render APIs but its octet MIME constant is private.
+    replace(src / "app/src/main/java/com/fongmi/android/tv/player/exo/ExoUtil.java",
+            "MimeTypes.APPLICATION_OCTET", '"application/octet-stream"')
     gradle = src / "app/build.gradle"
     replace(gradle, '        versionCode 1', '        versionCode 2')
     replace(gradle, 'versionName "1.0.0 家庭电视"', 'versionName "1.0.1 家庭电视"')
