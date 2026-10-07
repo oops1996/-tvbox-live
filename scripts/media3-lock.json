@@ -1,0 +1,57 @@
+{
+  "repository": "tongxunlu/2026-07-09-fongmi-with-media3",
+  "commit": "3f3f7dfa3def514d66b75526044f9377a64eb597",
+  "version": "1.10.1",
+  "modules": [
+    {
+      "module": "media3-common",
+      "aar_sha256": "587e65febd95da9fa9811b3dec7249931bcfca3e7fc16ead8ce31fd0647b1d58",
+      "pom_sha256": "10a5cd980dc8555e75b76f62c7fefcf29bba715a2efeb66ba54d5553b332571a"
+    },
+    {
+      "module": "media3-container",
+      "aar_sha256": "fcad268232cb21fd45e5953f71360309c2f1796ff571821cd92f4193aa7a8e24",
+      "pom_sha256": "7737448d39d2da309a1085254c6bd23371ac87bbf8a3806cf14e373f79e2bf4a"
+    },
+    {
+      "module": "media3-database",
+      "aar_sha256": "520e6f814e42a7d428db187ac073b453c0fcba0f4f5f4edd1cf33fafd2cfb740",
+      "pom_sha256": "4ddf18f91c97af3f544336843975e74061c55c33fab3323d235d458deb088ef7"
+    },
+    {
+      "module": "media3-datasource",
+      "aar_sha256": "28ca4729176659c0d5a43ec6347ca01ca9d1be0078a4b4e166cd70c4926aa60a",
+      "pom_sha256": "9a4aef0439d968f3a2a4c00a4fb1527cdff5a43ae82ab80c1b54ab0c2f825847"
+    },
+    {
+      "module": "media3-datasource-okhttp",
+      "aar_sha256": "a6d4ad934b4de3e38fa3993a9a09d65addbb52e572af63d29f030bbb47e4e015",
+      "pom_sha256": "2b5e0d251bb8e836c0b7e2854e16319cbbf1f8d741d3d30331e4508a29664728"
+    },
+    {
+      "module": "media3-decoder",
+      "aar_sha256": "a432e2e91411d8b6e9445d230d1eaef3a7d68846e0c40c26e856a87abab6344d",
+      "pom_sha256": "3885dd216211c177a125a1fb42a5e1eebd3e8139f00b647ff65ea918734914f7"
+    },
+    {
+      "module": "media3-exoplayer",
+      "aar_sha256": "87a3c22e64c045f5cefc5367c56b879be57f3b794b6ca83cc7bcd182a0743d3b",
+      "pom_sha256": "5348ed5a65aa58b3a6b11976633aaafb9e64d3b9e3695e60f39a3da55b2679a9"
+    },
+    {
+      "module": "media3-exoplayer-hls",
+      "aar_sha256": "80ba8004d72da4722e067111fafdecf927121482c79ea0b3bf9b3916c10a403f",
+      "pom_sha256": "06efe893cd22cccb34c72e13f4dab9481cf0ca5bb043e1475143462ddddf3561"
+    },
+    {
+      "module": "media3-extractor",
+      "aar_sha256": "f9e0541869d42c5549563c6325f3aeb51f477d149bd7be92d7e5f1a05d356c98",
+      "pom_sha256": "cb7cf1852c24e013ba093e3f69d3d062de27cb60eef97d97e69d0e02ab3dc61f"
+    },
+    {
+      "module": "media3-ui",
+      "aar_sha256": "1458a14f5254b18e889acdf46c8af6d456b90368e24bd0813350db92b25a2eb9",
+      "pom_sha256": "0ff8e0446d08286e20d50f03f467bd6b42070efe7d8c5bda82889ea626246949"
+    }
+  ]
+}

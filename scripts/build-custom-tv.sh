@@ -10,6 +10,7 @@ git -C "$SRC" remote add origin "$UPSTREAM"
 git -C "$SRC" fetch --depth 1 origin "$UPSTREAM_SHA"
 git -C "$SRC" checkout --detach FETCH_HEAD
 python3 "$CUSTOM_DIR/scripts/customize-tv.py" "$SRC" --repo "$CUSTOM_DIR"
+python3 "$CUSTOM_DIR/scripts/prepare-media3.py" "$SRC"
 cd "$SRC"
 # 上游把 FreeBox 配对弹窗布局只放在 mobile flavor，但对应 Java 类位于 main，leanback 构建会缺少 ViewBinding。
 mkdir -p app/src/leanback/res/layout
@@ -40,6 +41,7 @@ PY
   cp "$APK" "$OUT/leanback-$ABI-release.apk"
 done
 python3 "$CUSTOM_DIR/scripts/verify-apks.py" "$OUT"
+cp "$CUSTOM_DIR/scripts/media3-lock.json" "$OUT/media3-lock.json"
 printf '%s\n' "$UPSTREAM_SHA" > "$OUT/upstream-commit.txt"
 printf '%s\n' "${GITHUB_SHA:-local}" > "$OUT/customization-commit.txt"
 echo "Both ARM APKs built and verified: $OUT"

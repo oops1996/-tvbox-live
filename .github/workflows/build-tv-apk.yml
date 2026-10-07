@@ -7,6 +7,8 @@ on:
       - "scripts/build-custom-tv.sh"
       - "scripts/customize-tv.py"
       - "scripts/upstream-compat.py"
+      - "scripts/prepare-media3.py"
+      - "scripts/media3-lock.json"
       - "scripts/verify-apks.py"
       - "android-overlay/**"
       - "assets/android/**"
@@ -78,6 +80,7 @@ jobs:
           path: |
             apk-out/*.apk
             apk-out/build-verification.json
+            apk-out/media3-lock.json
             apk-out/*commit.txt
           if-no-files-found: error
           retention-days: 30

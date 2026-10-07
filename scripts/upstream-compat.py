@@ -61,3 +61,23 @@ media3 = """
 if "androidx.media3:media3-exoplayer:" not in s:
     s = s.replace("dependencies {", "dependencies {" + media3)
 p.write_text(s, encoding="utf-8")
+
+# Use the matching custom Media3 modules. Standard Media3 lacks the upstream's
+# subtitle position, render switching, adblock and decoder selection APIs.
+p = SRC / "build.gradle"
+s = p.read_text(encoding="utf-8")
+s = s.replace("media3Version = '1.8.0'", "media3Version = '1.10.1'")
+p.write_text(s, encoding="utf-8")
+p = SRC / "settings.gradle"
+s = p.read_text(encoding="utf-8")
+s = s.replace("        mavenCentral()", """        maven {
+            url = uri("$rootDir/family-media3-maven")
+            metadataSources {
+                mavenPom()
+                artifact()
+                ignoreGradleMetadataRedirection()
+            }
+            content { includeGroup "androidx.media3" }
+        }
+        mavenCentral()""")
+p.write_text(s, encoding="utf-8")
