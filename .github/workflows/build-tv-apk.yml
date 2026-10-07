@@ -6,8 +6,6 @@ on:
     paths:
       - "scripts/build-custom-tv.sh"
       - ".github/workflows/build-tv-apk.yml"
-      - "config.json"
-      - "live.txt"
 
 permissions:
   contents: read
