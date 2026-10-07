@@ -20,7 +20,7 @@ if [[ ! -d "$DEPS/unpacked" ]]; then
 fi
 FRAMEWORK=$(find "$DEPS/unpacked" -name VLCKit.framework -type d -print -quit)
 [[ -n "$FRAMEWORK" ]] || { echo 'VLCKit.framework missing' >&2; exit 1; }
-lipo -verify_arch arm64 "$FRAMEWORK/VLCKit"
+lipo "$FRAMEWORK/VLCKit" -verify_arch arm64
 
 APP="$OUT/家庭电视.app"
 [[ ! -e "$APP" ]] || { echo "Output already exists: $APP; choose a new FAMILYTV_OUTPUT_DIR" >&2; exit 1; }
@@ -41,7 +41,7 @@ xcrun swiftc "${SWIFT_FLAGS[@]}" -target arm64-apple-macos13.0 -O \
 # Preserve framework symlinks; validate and sign every bundled native module first.
 while IFS= read -r -d '' binary; do
   if file "$binary" | grep -q 'Mach-O'; then
-    lipo -verify_arch arm64 "$binary"
+    lipo "$binary" -verify_arch arm64
     if otool -L "$binary" | awk '/compatibility version/ {print $1}' | grep -E '/opt/homebrew/|/usr/local/|/Users/|/Volumes/' ; then
       echo "Non-portable dependency in $binary" >&2; exit 1
     fi
@@ -51,7 +51,7 @@ done < <(find "$APP/Contents/Frameworks" -type f -print0)
 codesign --force --sign - "$APP/Contents/Frameworks/VLCKit.framework"
 codesign --force --sign - "$APP"
 codesign --verify --deep --strict --verbose=2 "$APP"
-lipo -verify_arch arm64 "$APP/Contents/MacOS/FamilyTV"
+lipo "$APP/Contents/MacOS/FamilyTV" -verify_arch arm64
 
 # ZIP inside the artifact retains executable bits and framework symlinks.
 ditto -c -k --sequesterRsrc --keepParent "$APP" "$OUT/家庭电视-macOS-arm64-app.zip"
