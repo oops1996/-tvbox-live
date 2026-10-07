@@ -25,8 +25,8 @@ def customize(src, repo):
     replace(src / "app/src/main/java/com/fongmi/android/tv/player/exo/ExoUtil.java",
             "MimeTypes.APPLICATION_OCTET", '"application/octet-stream"')
     gradle = src / "app/build.gradle"
-    replace(gradle, '        versionCode 1', '        versionCode 2')
-    replace(gradle, 'versionName "1.0.0 家庭电视"', 'versionName "1.0.1 家庭电视"')
+    replace(gradle, '        versionCode 1', '        versionCode 3')
+    replace(gradle, 'versionName "1.0.0 家庭电视"', 'versionName "1.0.2 家庭电视"')
     replace(gradle, '    buildTypes {', '''    signingConfigs {
         family {
             if (System.getenv("FAMILY_TV_KEYSTORE_PATH")) {
@@ -39,6 +39,21 @@ def customize(src, repo):
     }
     buildTypes {''')
     replace(gradle, '        release {', '        release {\n            signingConfig System.getenv("FAMILY_TV_KEYSTORE_PATH") ? signingConfigs.family : signingConfigs.debug')
+
+    # Prefer AndroidX's stock HTTP transport for playback. The upstream custom OkHttp
+    # stack adds DNS/proxy/auth interceptors which can turn otherwise valid IPTV HLS
+    # requests into generic IO failures on some Android TV firmwares.
+    media_factory = src / "app/src/main/java/com/fongmi/android/tv/player/exo/MediaSourceFactory.java"
+    replace(media_factory, 'import androidx.media3.datasource.DefaultDataSource;',
+            'import androidx.media3.datasource.DefaultDataSource;\nimport androidx.media3.datasource.DefaultHttpDataSource;')
+    replace(media_factory, 'import androidx.media3.datasource.okhttp.OkHttpDataSource;\n', '')
+    replace(media_factory, 'import com.github.catvod.net.OkHttp;\n', '')
+    replace(media_factory,
+            'if (httpDataSourceFactory == null) httpDataSourceFactory = new OkHttpDataSource.Factory(OkHttp.player());',
+            'if (httpDataSourceFactory == null) httpDataSourceFactory = new DefaultHttpDataSource.Factory()'
+            ' + '.setUserAgent(ExoUtil.getUa()).setAllowCrossProtocolRedirects(true)'
+            ' + '.setConnectTimeoutMs(15000).setReadTimeoutMs(30000);')
+
     icon = repo / "assets/android/family-tv-icon.png"
     if hashlib.sha256(icon.read_bytes()).hexdigest() != ICON_SHA256:
         raise RuntimeError("Final user icon checksum does not match")
@@ -54,6 +69,18 @@ def customize(src, repo):
     manifest = src / "app/src/main/AndroidManifest.xml"
     replace(manifest, 'android:icon="@mipmap/ic_launcher"', 'android:icon="@drawable/family_tv_icon"')
     replace(manifest, 'android:roundIcon="@mipmap/ic_launcher_round"', 'android:roundIcon="@drawable/family_tv_icon"')
+    replace(manifest, 'android:usesCleartextTraffic="true"', 'android:usesCleartextTraffic="true"\n        android:networkSecurityConfig="@xml/network_security_config"')
+    network_xml = src / "app/src/main/res/xml/network_security_config.xml"
+    network_xml.parent.mkdir(parents=True, exist_ok=True)
+    network_xml.write_text('''<?xml version="1.0" encoding="utf-8"?>
+<network-security-config>
+    <base-config cleartextTrafficPermitted="true">
+        <trust-anchors>
+            <certificates src="system" />
+            <certificates src="user" />
+        </trust-anchors>
+    </base-config>
+</network-security-config>''')
     manifest = src / "app/src/leanback/AndroidManifest.xml"
     replace(manifest, 'android:banner="@mipmap/ic_banner"', 'android:banner="@drawable/family_tv_banner"')
     replace(manifest, 'android:theme="@style/Theme.Splash"', 'android:theme="@style/Theme.App"\n            android:clearTaskOnLaunch="true"\n            android:launchMode="singleTop"')
@@ -195,7 +222,7 @@ def customize(src, repo):
             dest.parent.mkdir(parents=True, exist_ok=True)
             shutil.copy2(path, dest)
     # Fail before Gradle if a patched XML file is malformed.
-    for path in [manifest, src / "app/src/main/AndroidManifest.xml", styles, layout, pairing, res / "drawable/family_tv_banner.xml", res / "values/family_tv.xml"]:
+    for path in [manifest, src / "app/src/main/AndroidManifest.xml", styles, layout, pairing, res / "drawable/family_tv_banner.xml", res / "values/family_tv.xml", network_xml]:
         ET.parse(path)
     print("Family TV customization applied; original icon checksum verified.")
 
