@@ -37,6 +37,18 @@ extra = """
     <attr name="use_artwork" format="boolean" />
     <attr name="use_controller" format="boolean" />
     <attr name="keep_content_on_player_reset" format="boolean" />
+    <attr name="surface_type" format="enum">
+        <enum name="none" value="0" />
+        <enum name="surface_view" value="1" />
+        <enum name="texture_view" value="2" />
+        <enum name="spherical_gl_surface_view" value="3" />
+        <enum name="video_decoder_gl_surface_view" value="4" />
+    </attr>
+    <attr name="scrubber_color" format="color" />
+    <attr name="played_color" format="color" />
+    <attr name="buffered_color" format="color" />
+    <attr name="unplayed_color" format="color" />
+    <attr name="shutter_background_color" format="color" />
 """
 if 'name="resize_mode"' not in s:
     s = s.replace("</resources>", extra + "\n</resources>")
