@@ -44,7 +44,6 @@ NewTV精品大剧,http://117.169.120.223:8080/hwrr.jx.chinamobile.com/PLTV/88888
 黑莓电影,http://117.169.120.223:8080/hwrr.jx.chinamobile.com/PLTV/88888888/224/3221225764/index.m3u8
 综艺纪录,#genre#
 NewTV超级综艺,http://117.169.120.223:8080/hwrr.jx.chinamobile.com/PLTV/88888888/224/3221225768/index.m3u8
-上海纪实人文,http://117.169.120.223:8080/hwrr.jx.chinamobile.com/PLTV/88888888/224/3221225655/index.m3u8
 体育,#genre#
 NewTV超级体育,http://117.169.120.223:8080/hwrr.jx.chinamobile.com/PLTV/88888888/224/3221225767/index.m3u8
 NewTV精品体育,http://117.169.120.223:8080/hwrr.jx.chinamobile.com/PLTV/88888888/224/3221225709/index.m3u8
