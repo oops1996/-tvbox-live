@@ -1,5 +1,5 @@
 import Foundation
-import AVKit
+import Combine
 
 struct LiveChannel: Identifiable, Hashable, Codable {
     let id = UUID()
@@ -21,7 +21,8 @@ struct MediaHistory: Identifiable, Codable, Hashable {
 final class AppModel: ObservableObject {
     @Published var liveChannels: [LiveChannel] = []
     @Published var selectedChannel: LiveChannel?
-    @Published var player: AVPlayer?
+    let playback = IPTVPlayer()
+    let films = FilmLibrary()
     @Published var statusText = ""
     @Published var favorites: Set<String> = []
     @Published var history: [MediaHistory] = []
@@ -39,7 +40,16 @@ final class AppModel: ObservableObject {
         didSet { UserDefaults.standard.set(webDAVPassword, forKey: "webDAVPassword") }
     }
 
+    @Published var softwareDecoding: Bool {
+        didSet { UserDefaults.standard.set(softwareDecoding, forKey: "softwareDecoding") }
+    }
+    @Published var networkCache: Double {
+        didSet { UserDefaults.standard.set(networkCache, forKey: "networkCache") }
+    }
+
     init() {
+        softwareDecoding = UserDefaults.standard.object(forKey: "softwareDecoding") as? Bool ?? true
+        networkCache = UserDefaults.standard.object(forKey: "networkCache") as? Double ?? 1500
         liveURL = UserDefaults.standard.string(forKey: "liveURL")
             ?? "https://cdn.jsdelivr.net/gh/oops1996/-tvbox-live@main/live.txt"
         webDAVBase = UserDefaults.standard.string(forKey: "webDAVBase") ?? "http://192.168.1.14:5244/dav/"
@@ -89,15 +99,36 @@ final class AppModel: ObservableObject {
 
     func play(channel: LiveChannel) {
         selectedChannel = channel
-        play(name: channel.name, url: channel.url, headers: [:])
+        play(name: channel.name, url: channel.url, headers: [:], isLive: true)
     }
 
-    func play(name: String, url: String, headers: [String: String]) {
-        guard let u = URL(string: url) else { return }
-        let asset = AVURLAsset(url: u, options: headers.isEmpty ? nil : ["AVURLAssetHTTPHeaderFieldsKey": headers])
-        player = AVPlayer(playerItem: AVPlayerItem(asset: asset))
-        player?.play()
+    func play(name: String, url: String, headers: [String: String], isLive: Bool = false) {
+        guard let u = URL(string: url), ["http", "https", "file"].contains(u.scheme?.lowercased() ?? "") else {
+            statusText = "播放地址无效"
+            return
+        }
+        playback.play(name: name, url: u, headers: headers, isLive: isLive,
+                      softwareDecoding: softwareDecoding, cacheMilliseconds: Int(networkCache))
         addHistory(name: name, url: url)
+    }
+
+    func play(history item: MediaHistory) {
+        if let channel = liveChannels.first(where: { $0.url == item.url }) {
+            play(channel: channel)
+        } else {
+            selectedChannel = nil
+            play(name: item.name, url: item.url, headers: headers(for: item.url))
+        }
+    }
+
+    // Never attach a WebDAV password to an unrelated IPTV or history URL.
+    func headers(for value: String) -> [String: String] {
+        guard let url = URL(string: value), let base = URL(string: webDAVBase),
+              url.scheme?.lowercased() == base.scheme?.lowercased(),
+              url.host?.lowercased() == base.host?.lowercased(), url.port == base.port else { return [:] }
+        let basePath = base.path.hasSuffix("/") ? base.path : base.path + "/"
+        guard url.path == base.path || url.path.hasPrefix(basePath) else { return [:] }
+        return authHeader
     }
 
     func toggleFavorite(_ channel: LiveChannel) {

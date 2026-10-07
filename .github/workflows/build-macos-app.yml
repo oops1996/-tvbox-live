@@ -5,6 +5,7 @@ on:
   push:
     paths:
       - "macos/FamilyTV/**"
+      - "scripts/build-macos.sh"
       - ".github/workflows/build-macos-app.yml"
 
 permissions:
@@ -19,31 +20,54 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Build arm64 app
+      - name: Cache official VLCKit package
+        uses: actions/cache@v4
+        with:
+          path: .build-deps
+          key: vlckit-3.7.3-019afdae-macos-arm64
+
+      - name: Build and verify self-contained arm64 app and DMG
         shell: bash
         run: |
-          set -e
-          APP="build/家庭电视.app"
-          mkdir -p "$APP/Contents/MacOS"
-          cp macos/FamilyTV/Info.plist "$APP/Contents/Info.plist"
+          test "$(uname -m)" = arm64
+          bash scripts/build-macos.sh
 
-          xcrun swiftc             -target arm64-apple-macos13.0             -O             macos/FamilyTV/Sources/*.swift             -o "$APP/Contents/MacOS/FamilyTV"             -framework SwiftUI             -framework AppKit             -framework AVKit             -framework AVFoundation             -framework Foundation
-
-          chmod +x "$APP/Contents/MacOS/FamilyTV"
-          codesign --force --deep --sign - "$APP"
-
-      - name: Create DMG
+      - name: Test bundled decoder, WebDAV authentication, HLS and film sources
         shell: bash
         run: |
-          mkdir -p dist
-          hdiutil create             -volname "家庭电视"             -srcfolder "build/家庭电视.app"             -ov             -format UDZO             "dist/家庭电视-macOS-arm64.dmg"
+          set -euo pipefail
+          APP="$PWD/dist/macos/家庭电视.app"
+          SMOKE=$(mktemp -d "$RUNNER_TEMP/familytv-smoke.XXXXXX")
+          mkdir -p "$SMOKE/MacOS"
+          ln -s "$APP/Contents/Frameworks" "$SMOKE/Frameworks"
+          xcrun clang -x objective-c -fobjc-arc -target arm64-apple-macos13.0 \
+            macos/FamilyTV/Tests/HeadlessPlayback.c \
+            -F "$APP/Contents/Frameworks" -framework VLCKit \
+            -Wl,-rpath,@executable_path/../Frameworks \
+            -o "$SMOKE/MacOS/HeadlessPlayback"
+          xcrun swiftc -target arm64-apple-macos13.0 \
+            macos/FamilyTV/Sources/FilmSources.swift \
+            macos/FamilyTV/Tests/SourceSmoke.swift \
+            -o "$SMOKE/MacOS/SourceSmoke"
+          codesign --force --sign - "$SMOKE/MacOS/HeadlessPlayback"
+          python3 macos/FamilyTV/Tests/smoke.py "$SMOKE/MacOS/HeadlessPlayback" "$SMOKE/fixtures" "$SMOKE/MacOS/SourceSmoke"
+
+      - name: Confirm DMG and archive contents
+        shell: bash
+        run: |
+          set -euo pipefail
+          hdiutil verify dist/macos/家庭电视-macOS-arm64.dmg
+          unzip -t dist/macos/家庭电视-macOS-arm64-app.zip
+          echo 'Apple Silicon app, embedded VLCKit, signatures, decoded HLS/WebDAV frames and DMG verified. GUI playback still requires a real Mac check.' >> "$GITHUB_STEP_SUMMARY"
+          cat dist/macos/SHA256SUMS.txt >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload macOS build
         uses: actions/upload-artifact@v4
         with:
           name: 家庭电视-macOS-arm64
           path: |
-            build/家庭电视.app
-            dist/家庭电视-macOS-arm64.dmg
+            dist/macos/家庭电视-macOS-arm64-app.zip
+            dist/macos/家庭电视-macOS-arm64.dmg
+            dist/macos/SHA256SUMS.txt
           retention-days: 30
           if-no-files-found: error

@@ -94,11 +94,6 @@ struct WebDAVClient {
     func absoluteURL(for href: String) -> String {
         if href.hasPrefix("http://") || href.hasPrefix("https://") { return href }
         guard let base = URL(string: baseURL) else { return href }
-        if href.hasPrefix("/") {
-            var c = URLComponents(url: base, resolvingAgainstBaseURL: false)
-            c?.path = href
-            return c?.url?.absoluteString ?? href
-        }
-        return base.appendingPathComponent(href).absoluteString
+        return URL(string: href, relativeTo: base)?.absoluteURL.absoluteString ?? href
     }
 }

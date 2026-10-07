@@ -1,9 +1,10 @@
 import SwiftUI
-import AVKit
+import AppKit
 
 enum SidebarItem: String, CaseIterable, Identifiable {
     case home = "首页"
     case live = "直播"
+    case films = "影视"
     case drive = "我的网盘"
     case search = "搜索"
     case favorites = "收藏"
@@ -14,6 +15,7 @@ enum SidebarItem: String, CaseIterable, Identifiable {
         switch self {
         case .home: return "house"
         case .live: return "tv"
+        case .films: return "film"
         case .drive: return "externaldrive"
         case .search: return "magnifyingglass"
         case .favorites: return "star"
@@ -37,6 +39,7 @@ struct ContentView: View {
             switch selection ?? .home {
             case .home: HomeView()
             case .live: LiveView()
+            case .films: FilmView(library: model.films)
             case .drive: WebDAVView()
             case .search: SearchView()
             case .favorites: FavoritesView()
@@ -83,18 +86,49 @@ struct StatCard: View {
 
 struct PlayerPanel: View {
     @EnvironmentObject var model: AppModel
+    var body: some View { PlayerContent(playback: model.playback) }
+}
+
+struct PlayerContent: View {
+    @ObservedObject var playback: IPTVPlayer
     var body: some View {
-        Group {
-            if let player = model.player {
-                VideoPlayer(player: player)
-                    .aspectRatio(16/9, contentMode: .fit)
-                    .background(.black)
-                    .clipShape(RoundedRectangle(cornerRadius: 12))
-            } else {
-                RoundedRectangle(cornerRadius: 12)
-                    .fill(.black)
-                    .overlay(Text("选择内容开始播放").foregroundStyle(.white.opacity(0.75)))
-                    .aspectRatio(16/9, contentMode: .fit)
+        VStack(alignment: .leading, spacing: 10) {
+            ZStack {
+                VLCVideoSurface(playback: playback)
+                if !playback.hasMedia {
+                    Text("选择内容开始播放").foregroundStyle(.white.opacity(0.75))
+                } else if playback.isBuffering {
+                    ProgressView().colorScheme(.dark)
+                } else if playback.failed {
+                    VStack(spacing: 12) {
+                        Image(systemName: "exclamationmark.triangle").font(.largeTitle)
+                        Text("暂时无法播放")
+                        Button("重试") { playback.retry() }
+                    }.foregroundStyle(.white)
+                }
+            }
+            .aspectRatio(16/9, contentMode: .fit)
+            .background(.black)
+            .clipShape(RoundedRectangle(cornerRadius: 12))
+            if playback.hasMedia {
+                if playback.canSeek {
+                    Slider(value: Binding(get: { playback.position }, set: { playback.seek(to: $0) }), in: 0...1)
+                        .accessibilityLabel("播放进度")
+                }
+                HStack(spacing: 14) {
+                    Button { playback.togglePause() } label: {
+                        Image(systemName: playback.isPlaying ? "pause.fill" : "play.fill")
+                    }.help("播放 / 暂停")
+                    Button { playback.stop() } label: { Image(systemName: "stop.fill") }.help("停止")
+                    Button("重试") { playback.retry() }
+                    Spacer()
+                    Image(systemName: "speaker.wave.2")
+                    Slider(value: $playback.volume, in: 0...100).frame(width: 100).accessibilityLabel("音量")
+                    Button { playback.videoView.window?.toggleFullScreen(nil) } label: {
+                        Image(systemName: "arrow.up.left.and.arrow.down.right")
+                    }.help("全屏")
+                }
+                Text(playback.status).font(.caption).foregroundStyle(playback.failed ? .red : .secondary)
             }
         }
     }
@@ -214,7 +248,7 @@ struct WebDAVView: View {
             Task { await reload() }
         } else {
             let url = client.absoluteURL(for: item.href)
-            model.play(name: item.name, url: url, headers: client.authHeader)
+            model.play(name: item.name, url: url, headers: model.headers(for: url))
         }
     }
 }
@@ -233,6 +267,7 @@ struct SearchView: View {
             List(results) { ch in
                 Button(ch.name) { model.play(channel: ch) }.buttonStyle(.plain)
             }
+            PlayerPanel().frame(maxWidth: 850)
         }.padding(28)
     }
 }
@@ -250,6 +285,7 @@ struct FavoritesView: View {
                     Button("取消收藏") { model.toggleFavorite(ch) }.buttonStyle(.borderless)
                 }
             }
+            PlayerPanel().frame(maxWidth: 850)
         }.padding(28)
     }
 }
@@ -265,7 +301,7 @@ struct HistoryView: View {
             }
             List(model.history) { item in
                 Button {
-                    model.play(name: item.name, url: item.url, headers: model.authHeader)
+                    model.play(history: item)
                 } label: {
                     HStack {
                         Text(item.name)
@@ -274,6 +310,7 @@ struct HistoryView: View {
                     }
                 }.buttonStyle(.plain)
             }
+            PlayerPanel().frame(maxWidth: 850)
         }.padding(28)
     }
 }
@@ -292,6 +329,15 @@ struct SettingsView: View {
                 SecureField("密码", text: $model.webDAVPassword)
                 Text("推荐地址格式：http://192.168.1.x:5244/dav/")
                     .font(.caption).foregroundStyle(.secondary)
+            }
+            Section("播放") {
+                Toggle("软件解码（直播兼容性优先）", isOn: $model.softwareDecoding)
+                Slider(value: $model.networkCache, in: 500...5000, step: 500) {
+                    Text("网络缓冲")
+                }
+                Text("网络缓冲：\(Int(model.networkCache)) 毫秒；更改后点击播放器重试生效。")
+                    .font(.caption).foregroundStyle(.secondary)
+                Text("播放内核：VLC / VLCKit 3.7.3")
             }
             Section("说明") {
                 Text("账号和密码只保存在这台 Mac 的本地偏好设置中，不写入 GitHub。")
