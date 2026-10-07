@@ -5,6 +5,12 @@ on:
   push:
     paths:
       - "scripts/build-custom-tv.sh"
+      - "scripts/customize-tv.py"
+      - "scripts/upstream-compat.py"
+      - "scripts/verify-apks.py"
+      - "android-overlay/**"
+      - "assets/android/**"
+      - "CUSTOM_APK.md"
       - ".github/workflows/build-tv-apk.yml"
 
 permissions:
@@ -42,13 +48,36 @@ jobs:
           yes | "$SDKMANAGER" --licenses >/dev/null || true
           "$SDKMANAGER" "platform-tools" "platforms;android-36" "build-tools;36.0.0"
 
+      - name: Install icon validation dependency
+        run: python3 -m pip install Pillow==11.3.0
+
       - name: Build customized TV APK
-        run: bash scripts/build-custom-tv.sh
+        env:
+          FAMILY_TV_KEYSTORE_BASE64: ${{ secrets.FAMILY_TV_KEYSTORE_BASE64 }}
+          FAMILY_TV_KEYSTORE_PASSWORD: ${{ secrets.FAMILY_TV_KEYSTORE_PASSWORD }}
+          FAMILY_TV_KEY_ALIAS: ${{ secrets.FAMILY_TV_KEY_ALIAS }}
+          FAMILY_TV_KEY_PASSWORD: ${{ secrets.FAMILY_TV_KEY_PASSWORD }}
+        shell: bash
+        run: |
+          if [ -n "$FAMILY_TV_KEYSTORE_BASE64" ]; then
+            test -n "$FAMILY_TV_KEYSTORE_PASSWORD"
+            test -n "$FAMILY_TV_KEY_ALIAS"
+            test -n "$FAMILY_TV_KEY_PASSWORD"
+            export FAMILY_TV_KEYSTORE_PATH="$RUNNER_TEMP/family-tv.jks"
+            printf '%s' "$FAMILY_TV_KEYSTORE_BASE64" | base64 --decode > "$FAMILY_TV_KEYSTORE_PATH"
+            chmod 600 "$FAMILY_TV_KEYSTORE_PATH"
+          else
+            echo "::notice::No private release signing key configured; producing installable test APKs signed with the runner debug key."
+          fi
+          bash scripts/build-custom-tv.sh
 
       - name: Upload APK artifacts
         uses: actions/upload-artifact@v4
         with:
           name: 家庭电视-APK
-          path: apk-out/*.apk
+          path: |
+            apk-out/*.apk
+            apk-out/build-verification.json
+            apk-out/*commit.txt
           if-no-files-found: error
           retention-days: 30

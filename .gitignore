@@ -1,3 +1,11 @@
 .build-deps/
 dist/
 build/
+apk-out/
+tv-src/
+*.jks
+*.keystore
+*.p12
+local.properties
+__pycache__/
+*.pyc

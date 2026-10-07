@@ -1,29 +1,53 @@
-# 家庭电视 APK
+# 家庭电视 Android TV APK 定制规则
 
-这是“家庭电视”定制 APK 的构建仓库。
+更新日期：2026-10-07。本文件是 Android TV 定制构建的当前规则。
 
-## 第一版目标
+## 应用身份与视觉
 
-- Android TV / Android 11 兼容
-- 遥控器 D-pad 操作
-- 应用名：家庭电视
-- 包名：`com.oops.tv`
-- 开机自启，但进入首页，不自动打开直播
-- 保留影视、直播、搜索、收藏、历史、设置
-- 默认总配置：
-  `https://cdn.jsdelivr.net/gh/oops1996/-tvbox-live@main/config.json`
-- 默认直播由总配置中的 `live.txt` 加载
-- 不把网盘 Cookie、Token、密码写入 APK 或公开仓库
-- 禁用上游 APK 自动更新，避免覆盖定制版
+- 名称：家庭电视；包名：`com.oops.tv`；本次版本：`1.0.1`，versionCode `2`。
+- 最终图标：`assets/android/family-tv-icon.png`，来自用户确认的“已生成图像 1.png”。保留原始图像，应用图标、圆形图标引用和电视启动器横幅均使用这一设计。
+- 不增加自定义启动 Activity、品牌页、倒计时或人为等待。直接显示影视首页，远程配置和内容异步加载。
+- Android 12 及以上系统本身的短暂启动画面由系统控制，不视为新增的品牌页；主要目标电视为 Android 11。
 
-## 构建方式
+## 启动与退出
 
-GitHub Actions 会自动拉取公开上游源码，在构建时应用本仓库的定制补丁，然后生成：
-- Leanback arm64-v8a APK
-- Leanback armeabi-v7a APK
+- 默认进入影视首页，影视是第一个功能入口并优先获得遥控器焦点；不自动打开直播或播放视频。
+- 接收系统开机/快速开机广播时，清空原活动任务并启动首页；不恢复上次页面。观看历史仍保留。
+- 普通重新启动也不恢复保存的首页页面状态。
+- 返回键先退出子页面、回到首页或回到首页顶部；首页再按返回弹出“退出家庭电视？”确认框，默认焦点为“取消”。只有确认“退出”后才停止后台播放并结束任务。
+- 电视系统可能限制第三方 App 开机拉起；是否能自动启动需要在目标电视上验证并在系统中允许自启动。
 
-电视型号：75JD1000，Android 11。由于当前系统信息页没有显示 CPU ABI，第一轮同时生成 64 位和 32 位 ARM 包。
+## 保留功能与本机配置
 
-## 开源说明
+- 保留直播、影视、搜索、收藏、历史、设置和遥控器 D-pad 操作。另提供“我的媒体”入口。
+- 首次启动默认影视配置：`https://cdn.jsdelivr.net/gh/oops1996/-tvbox-live@main/config.json`。
+- 默认直播：`https://cdn.jsdelivr.net/gh/oops1996/-tvbox-live@main/live.txt`。日后更新远程列表不需要重新构建 APK。
+- 仓库当前默认总配置的 `sites` 为空，因此不会凭空显示电影资源；影视内容来自用户在本机选择的合法接口或自己的媒体库。
+- 设置 → 接口管理：添加名称及 HTTP(S) URL、保存多个接口、切换、修改、启用/停用、删除、手动刷新，显示最后检查时间和加载状态。默认地址保留作兜底。接口失败时尝试恢复原接口；错误由界面处理。
+- 接口内容继续使用上游 TVBox 配置解析器。不能据此承诺所有第三方 JSON、插件或服务都兼容。
+- 设置或首页 → 我的媒体：由用户填写 OpenList 或 WebDAV 服务地址、账号和密码；支持目录浏览和调用现有播放器播放媒体。OpenList 接入 `/api/auth/login`、`/api/fs/list`、`/api/fs/get`；WebDAV 使用 `PROPFIND` 和 Basic 认证。网盘挂载由用户自己的 OpenList 管理。
+- 不预装第三方敏感影视接口，不把账号、密码、Cookie、Token、签名私钥或用户私有地址写入公开仓库。自定义数据保存在应用私有本机存储；Android 系统备份关闭；release 播放调试日志关闭。
+- 关闭上游自动更新及设置中的上游强制更新入口，防止覆盖定制版。
 
-定制构建基于公开的 TV-K / FongMi TV 衍生项目。上游项目采用 AGPL-3.0；本仓库保留构建脚本和改动方式，便于复现对应定制版本。仅用于播放用户有权访问的媒体内容。
+## 构建与产物检查
+
+固定上游：`OttoHX/kknifer7_TV-K` 的 `189b4a58d49d332d2ce8267921f7cab5b813ea5c`。构建脚本不批量删除旧目录，每轮使用独立目录，补丁目标不匹配时立即失败。
+
+GitHub Actions 工作流：`.github/workflows/build-tv-apk.yml`。默认读取权限，只上传构建 Artifacts，不创建公开 Release，不修改账号权限。
+
+必须同时生成并检查：
+
+- `leanback-arm64_v8a-release.apk`：实际原生库为 `arm64-v8a`。
+- `leanback-armeabi_v7a-release.apk`：实际原生库为 `armeabi-v7a`。
+
+构建后逐个核对文件非空、包名、应用名、原生 ABI、APK 签名和最终图标像素，并生成 `build-verification.json` 和源码/定制提交记录。任一检查失败则工作流失败，不能把旧 APK 当成本轮产物。
+
+如果已配置以下 GitHub Actions Secrets，构建使用私有签名：`FAMILY_TV_KEYSTORE_BASE64`、`FAMILY_TV_KEYSTORE_PASSWORD`、`FAMILY_TV_KEY_ALIAS`、`FAMILY_TV_KEY_PASSWORD`。不在本次修改中创建或读取这些 Secret。缺少私有签名时使用 runner 的 debug 签名生成可安装测试包；不同 runner 的测试签名可能不同，因此不能保证以后直接覆盖升级。
+
+## 验证边界与开源来源
+
+本地补丁应用、语法和资源检查通过不等于 APK 编译通过或真机功能测试通过。是否成功必须以对应提交的 Actions 结果及两种 APK 的检查结果为准。开机自启、遥控器焦点、退出确认、实际网盘登录及播放需要目标电视验证。
+
+基于公开 TV-K / FongMi 衍生项目；上游 AGPL-3.0。固定上游源码、补丁脚本及 `android-overlay` 提供本次改动的复现依据。仅用于用户有权访问的媒体。
+
+参考：[Android 启动画面说明](https://developer.android.com/develop/ui/views/launch/splash-screen)、[OpenList API 文档](https://doc.oplist.org/api)、[目录列表 API](https://fox.oplist.org/364155732e0)。
