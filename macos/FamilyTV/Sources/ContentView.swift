@@ -197,8 +197,8 @@ struct WebDAVView: View {
         do {
             items = try await client.list(path: path)
             error = ""
-        } catch {
-            error = "WebDAV 读取失败：\(error.localizedDescription)"
+        } catch let err {
+            error = "WebDAV 读取失败：\(err.localizedDescription)"
         }
     }
 
