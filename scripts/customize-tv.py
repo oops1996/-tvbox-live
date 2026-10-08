@@ -51,8 +51,8 @@ def customize(src, repo):
     replace(media_factory,
             'if (httpDataSourceFactory == null) httpDataSourceFactory = new OkHttpDataSource.Factory(OkHttp.player());',
             'if (httpDataSourceFactory == null) httpDataSourceFactory = new DefaultHttpDataSource.Factory()'
-            ' + '.setUserAgent(ExoUtil.getUa()).setAllowCrossProtocolRedirects(true)'
-            ' + '.setConnectTimeoutMs(15000).setReadTimeoutMs(30000);')
+            '.setUserAgent(ExoUtil.getUa()).setAllowCrossProtocolRedirects(true)'
+            '.setConnectTimeoutMs(15000).setReadTimeoutMs(30000);')
 
     icon = repo / "assets/android/family-tv-icon.png"
     if hashlib.sha256(icon.read_bytes()).hexdigest() != ICON_SHA256:
