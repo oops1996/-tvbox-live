@@ -91,46 +91,104 @@ struct PlayerPanel: View {
 
 struct PlayerContent: View {
     @ObservedObject var playback: IPTVPlayer
+    var role: PlaybackSurfaceRole = .embedded
+
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            ZStack {
-                VLCVideoSurface(playback: playback)
-                if !playback.hasMedia {
-                    Text("选择内容开始播放").foregroundStyle(.white.opacity(0.75))
-                } else if playback.isBuffering {
-                    ProgressView().colorScheme(.dark)
-                } else if playback.failed {
-                    VStack(spacing: 12) {
-                        Image(systemName: "exclamationmark.triangle").font(.largeTitle)
-                        Text("暂时无法播放")
-                        Button("重试") { playback.retry() }
-                    }.foregroundStyle(.white)
+        VStack(alignment: .leading, spacing: 12) {
+            if role == .embedded && playback.isDetached {
+                VStack(spacing: 16) {
+                    Image(systemName: "macwindow").font(.system(size: 40))
+                    Text(playback.isFullscreen ? "正在全屏播放" : "正在独立窗口播放")
+                    HStack {
+                        Button("显示播放窗口") { playback.detach() }
+                        Button("嵌入播放页") { playback.embed() }
+                    }
                 }
+                .frame(maxWidth: .infinity).aspectRatio(16/9, contentMode: .fit)
+                .background(.black).foregroundStyle(.white)
+                .clipShape(RoundedRectangle(cornerRadius: 12))
+            } else {
+                ZStack {
+                    VLCVideoSurface(playback: playback, role: role)
+                    if !playback.hasMedia {
+                        Text("选择内容开始播放").foregroundStyle(.white.opacity(0.75))
+                    } else if playback.isBuffering {
+                        ProgressView().colorScheme(.dark)
+                    } else if playback.failed {
+                        VStack(spacing: 12) {
+                            Image(systemName: "exclamationmark.triangle").font(.largeTitle)
+                            Text("暂时无法播放")
+                            Button("重试") { playback.retry() }
+                        }.foregroundStyle(.white)
+                    }
+                }
+                .aspectRatio(16/9, contentMode: .fit)
+                .frame(maxWidth: .infinity, maxHeight: role == .window ? .infinity : nil)
+                .background(.black)
+                .clipShape(RoundedRectangle(cornerRadius: 12))
             }
-            .aspectRatio(16/9, contentMode: .fit)
-            .background(.black)
-            .clipShape(RoundedRectangle(cornerRadius: 12))
             if playback.hasMedia {
                 if playback.canSeek {
                     Slider(value: Binding(get: { playback.position }, set: { playback.seek(to: $0) }), in: 0...1)
                         .accessibilityLabel("播放进度")
                 }
-                HStack(spacing: 14) {
+                HStack(spacing: 12) {
+                    Button { playback.skip(seconds: -10) } label: { Image(systemName: "gobackward.10") }
+                        .disabled(!playback.canSeek).help("后退 10 秒（←）").accessibilityLabel("后退10秒")
                     Button { playback.togglePause() } label: {
                         Image(systemName: playback.isPlaying ? "pause.fill" : "play.fill")
-                    }.help("播放 / 暂停")
-                    Button { playback.stop() } label: { Image(systemName: "stop.fill") }.help("停止")
+                    }.help("播放 / 暂停（空格）").accessibilityLabel("播放或暂停")
+                    Button { playback.skip(seconds: 10) } label: { Image(systemName: "goforward.10") }
+                        .disabled(!playback.canSeek).help("前进 10 秒（→）").accessibilityLabel("前进10秒")
+                    Button { playback.stop() } label: { Image(systemName: "stop.fill") }
+                        .help("停止").accessibilityLabel("停止")
                     Button("重试") { playback.retry() }
-                    Spacer()
-                    Image(systemName: "speaker.wave.2")
-                    Slider(value: $playback.volume, in: 0...100).frame(width: 100).accessibilityLabel("音量")
-                    Button { playback.videoView.window?.toggleFullScreen(nil) } label: {
-                        Image(systemName: "arrow.up.left.and.arrow.down.right")
-                    }.help("全屏")
+                    Spacer(minLength: 8)
+                    Text(playback.isLive ? "直播" : "\(IPTVPlayer.timeLabel(playback.elapsed)) / \(IPTVPlayer.timeLabel(playback.duration))")
+                        .monospacedDigit().font(.caption)
                 }
-                Text(playback.status).font(.caption).foregroundStyle(playback.failed ? .red : .secondary)
+                HStack(spacing: 10) {
+                    Button { playback.toggleMute() } label: {
+                        Image(systemName: playback.isMuted || playback.volume == 0 ? "speaker.slash.fill" : "speaker.wave.2.fill")
+                    }.help("静音（M）").accessibilityLabel("静音")
+                    Slider(value: $playback.volume, in: 0...100).frame(width: 80).accessibilityLabel("音量")
+                    Picker("倍速", selection: Binding(get: { playback.playbackRate }, set: { playback.setRate($0) })) {
+                        ForEach(IPTVPlayer.rates, id: \.self) { rate in Text(String(format: "%g×", rate)).tag(rate) }
+                    }
+                    .labelsHidden().frame(width: 78).disabled(!playback.canChangeRate)
+                    .help(playback.isLive ? "直播使用正常速度" : "播放倍速（[ / ] 调整，0 恢复）")
+                    .accessibilityLabel("播放倍速")
+                    Spacer(minLength: 4)
+                }
+                HStack(spacing: 10) {
+                    Spacer(minLength: 4)
+                    Menu {
+                        Toggle("画面填满（可能裁切）", isOn: $playback.fillVideo)
+                        if role == .window {
+                            Button(playback.isFloating ? "取消置顶" : "窗口置顶") { playback.toggleFloating() }
+                        }
+                        Divider()
+                        Text("空格：播放 / 暂停")
+                        Text("← / →：后退 / 前进 10 秒")
+                        Text("↑ / ↓：音量")
+                        Text("F / 双击画面：全屏；Esc：退出")
+                        Text("M：静音；[ / ]：倍速；0：正常速度")
+                    } label: { Image(systemName: "ellipsis.circle") }.help("画面与快捷键")
+                    Button(role == .window ? "嵌入" : "独立窗口") {
+                        if role == .window { playback.embed() } else { playback.detach() }
+                    }.help(role == .window ? "返回应用内播放" : "打开独立播放窗口")
+                    Button { playback.toggleFullscreen() } label: {
+                        Image(systemName: playback.isFullscreen ? "arrow.down.right.and.arrow.up.left" : "arrow.up.left.and.arrow.down.right")
+                    }.help("全屏（F / 双击画面）").accessibilityLabel("切换全屏")
+                }
+                HStack {
+                    Text(playback.status).lineLimit(2)
+                    Spacer(minLength: 6)
+                    Text(playback.resolution).monospacedDigit()
+                }.font(.caption).foregroundStyle(playback.failed ? .red : .secondary)
             }
         }
+        .controlSize(.small)
     }
 }
 

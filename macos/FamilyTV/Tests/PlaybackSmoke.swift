@@ -34,7 +34,8 @@ struct PlaybackSmoke {
         playback.volume = 0
         let window = NSWindow(contentRect: NSRect(x: 20, y: 20, width: 480, height: 270),
                               styleMask: [.titled, .closable], backing: .buffered, defer: false)
-        window.contentView = playback.videoView
+        let embeddedHost = PlaybackVideoHost(playback: playback, role: .embedded)
+        window.contentView = embeddedHost
         window.orderFront(nil)
 
         let env = ProcessInfo.processInfo.environment
@@ -51,11 +52,40 @@ struct PlaybackSmoke {
         playback.togglePause()
         try await Task.sleep(nanoseconds: 600_000_000)
         try check(!playback.isPlaying, "Pause failed")
+        let identity = playback.playerIdentity
+        let pausedPosition = playback.position
+        playback.setRate(1.5)
+        playback.detach()
+        try await Task.sleep(nanoseconds: 800_000_000)
+        try check(playback.isDetached && playback.videoView.window === playback.presentation.window,
+                  "Detached window did not acquire the same video view")
+        try check(playback.playerIdentity == identity && abs(playback.position - pausedPosition) < 0.01,
+                  "Detaching restarted media or changed paused position")
+        try check(playback.playbackRate == 1.5, "Playback rate not retained")
+        playback.embed()
+        try await Task.sleep(nanoseconds: 300_000_000)
+        embeddedHost.attachIfActive()
+        try check(!playback.isDetached && playback.playerIdentity == identity, "Embedding recreated the decoder")
+        playback.seek(to: -2)
+        try check(playback.position == 0, "Negative seek not clamped")
+        playback.seek(to: 0.1)
+        playback.skip(seconds: 2)
+        try check(playback.position > 0.1, "Relative forward seek failed")
+        playback.toggleMute()
+        try check(playback.isMuted, "Mute failed")
+        playback.toggleMute()
         playback.togglePause()
+        try await waitForVideo(playback, "Playback did not resume after embedding")
+        let before = playback.elapsed
+        try await Task.sleep(nanoseconds: 2_000_000_000)
+        print("RATE CHECK: before=\(before) after=\(playback.elapsed) engine=\(playback.enginePlaybackRate)")
+        try check(playback.elapsed > before + 2.3, "1.5x rate did not advance the playback clock")
         playback.play(name: "HLS fixture", url: URL(string: base + "/dav/sample.m3u8")!, headers: auth,
                       isLive: true, softwareDecoding: true, cacheMilliseconds: 500)
         try await waitForVideo(playback, "Authenticated HLS did not render")
         try check(!playback.canSeek, "Live must not seek")
+        playback.setRate(2)
+        try check(playback.playbackRate == 1 && !playback.canChangeRate, "Live rate must remain 1x")
         playback.retry()
         try await waitForVideo(playback, "Retry did not render")
         playback.stop()

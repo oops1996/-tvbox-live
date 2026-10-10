@@ -9,7 +9,7 @@ struct FamilyTVApp: App {
             ContentView()
                 .environmentObject(model)
                 .frame(minWidth: 1080, minHeight: 680)
-                .onDisappear { model.playback.stop() }
+                .onDisappear { if !model.playback.isDetached { model.playback.stop() } }
         }
         .windowStyle(.titleBar)
     }
