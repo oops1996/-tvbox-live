@@ -21,11 +21,8 @@ CCTV8,http://69.30.245.50/live/cctv8.m3u8
 CCTV8,http://bztv.tvbus.cc:8081/cdnlive/cctv8.m3u8
 CCTV8,http://173.208.212.130:8181/720p/cctv8.m3u8
 CCTV9,http://198.204.228.26/live/cctv9hd.m3u8
-CCTV9,http://63.141.230.178:82/gslb/zbdq5.m3u8?id=cctv9hd
 CCTV9,https://xykt-fix.github.io/Y77.m3u8
 CCTV10,http://63.141.230.178:82/gslb/zbdq5.m3u8?id=cctv10hd
-CCTV10,http://38.75.136.137:98/gslb/dsdqbv/cctv10hd.m3u8?auth=test20251009
-CCTV11,http://38.75.136.137:98/gslb/dsdqbv/cctv11hd.m3u8?auth=test20251009
 CCTV11,http://63.141.230.178:82/gslb/zbdq5.m3u8?id=cctv11hd
 CCTV11,https://xykt-fix.github.io/play/a02b/index.m3u8
 CCTV12,http://38.75.136.137:98/gslb/dsdqbv/cctv12hd.m3u8?auth=test20251009
@@ -41,11 +38,9 @@ CCTV15,http://204.12.221.218:8181/3m1080p/cctv15.m3u8
 CCTV15,https://xykt-fix.github.io/play/a02e/index.m3u8
 CCTV16,http://38.75.136.137:98/gslb/dsdqbv/cctv16hd.m3u8?auth=test20251009
 CCTV16,http://173.208.234.146/live/cctv16.m3u8
-CCTV17,http://38.75.136.137:98/gslb/dsdqbv/cctv17hd.m3u8?auth=test20251009
 CCTV17,http://63.141.230.178:82/gslb/zbdq5.m3u8?id=cctv17hd
 卫视频道,#genre#
 江西卫视,http://38.75.136.137:98/gslb/dsdqpub/jxwshd.m3u8?auth=testpub
-江西卫视,http://63.141.230.178:82/gslb/zbdq5.m3u8?id=jxwshd
 湖南卫视,http://hlsal-ldvt.qing.mgtv.com/nn_live/nn_x64/dWlwPTEyNy4wLjAuMSZ1aWQ9cWluZy1jbXMmbm5fdGltZXpvbmU9OCZjZG5leF9pZD1hbF9obHNfbGR2dCZ1dWlkPTliODY4NmU5ZTM2YzYwMmMmZT02OTE0NjA0JnY9MSZpZD1ITldTWkdTVCZzPTcwN2RiYTc2YzJjNmJmMTQ4MmUyZGYzOWU2NWM3YWFi/HNWSZGST.m3u8
 湖南卫视,http://hlsal-ldvt.qing.mgtv.com/nn_live/nn_x64/Y2RuZXhfaWQ9YWxfaGxzX2xkdnQmZT02OTE0NjA0JnY9MSZpZD1ITldTWkdTVCZzPTcwN2RiYTc2YzJjNmJmMTQ4MmUyZGYzOWU2NWM3YWFi/HNWSZGST.m3u8
 湖南卫视,http://204.12.221.218:8181/3m1080p/hnws.m3u8
@@ -83,9 +78,7 @@ CCTV17,http://63.141.230.178:82/gslb/zbdq5.m3u8?id=cctv17hd
 湖北卫视,http://204.12.221.218:8181/3m1080p/hbws.m3u8
 安徽卫视,http://63.141.230.178:82/gslb/zbdq5.m3u8?id=ahwshd
 安徽卫视,http://38.75.136.137:98/gslb/dsdqpub/ahwshd.m3u8?auth=testpub
-安徽卫视,http://204.12.221.218:8181/3m1080p/ahws.m3u8
 安徽卫视,http://198.204.228.26/live/ahwshd.m3u8
-东南卫视,http://63.141.230.178:82/gslb/zbdq5.m3u8?id=dnwshd
 东南卫视,http://live.zohi.tv/video/s10001-fztv-3/index.m3u8
 电视剧场,#genre#
 第一剧场,http://38.75.136.137:98/gslb/dsdqpub/dyjc.m3u8?auth=testpub
@@ -98,8 +91,44 @@ CCTV17,http://63.141.230.178:82/gslb/zbdq5.m3u8?id=cctv17hd
 都市剧场,https://satellitepull.cnr.cn/live/wxcqxwgb/playlist.m3u8
 都市剧场,http://63.141.230.178:82/gslb/zbdq5.m3u8?id=dsjchd
 都市剧场,http://38.75.136.137:98/gslb/dsdqpub/dsjchd.m3u8?auth=testpub
-欢笑剧场,http://63.141.230.178:82/gslb/zbdq5.m3u8?id=hxjchd
 欢笑剧场,http://38.75.136.137:98/gslb/dsdqpub/hxjchd.m3u8?auth=testpub
+电影频道,#genre#
+CHC家庭影院,http://38.75.136.137:98/gslb/dsdqpub/chcjt.m3u8?auth=testpub
+CHC家庭影院,http://63.141.230.178:82/gslb/zbdq5.m3u8?id=chcjt
+CHC家庭影院,http://192.151.150.154/live/chcjt.m3u8
+CHC家庭影院,http://198.204.228.26/live/chcjt.m3u8
+CHC动作电影,http://192.151.150.154/live/chcdz.m3u8
+CHC动作电影,http://38.75.136.137:98/gslb/dsdqpub/chcdz.m3u8?auth=testpub
+纬来电影,http://31.43.191.125:8080/restream/restream/34852
+龙祥电影,http://31.43.191.125:8080/vip6821768502490/6c17bae55394/34825
+龙祥电影,http://31.43.191.125:8080/restream/restream/34825
+黑莓电影,https://epg.pw/stream/ffcb6572863f0745a7369fbd9d901f1dfd0ab8fab8bad8bebb4e01c90b303c47.m3u8
+MovieSphere,https://amg00353-lionsgatestudio-moviesphere-xumo-zh5u0.amagi.tv/playlist.m3u8
+Hallmark Movies & More,https://dbrb49pjoymg4.cloudfront.net/v1/master/3fec3e5cac39a52b2132f9c66c83dae043dc17d4/prod_default_xumo-ams-aws/master.m3u8?ads.xumo_channelId=99991709
+NEW K.MOVIES,https://ads.its-newid.net/api/manifest.m3u8?ads.service_id=GB1700007PK&channel_id=newid_343&tp=samsung_tvplus
+Universal Monsters,https://xumo-xumoent-ch824-d4q5c.fast.nbcuni.com/live/master.m3u8
+美剧频道,#genre#
+海滩救护队,https://baywatch-xumo.amagi.tv/playlist.m3u8
+海滩救护队,https://amg00145-buzzr-bigballs-baywatch-rokuus-qq7iy.amagi.tv/playlist/amg00145-buzzr-bigballs-baywatch-rokuus/playlist.m3u8
+行尸走肉宇宙,https://amc-twdfanexperience-1-us.xumo.wurl.tv/playlist.m3u8
+Murder She Wrote,https://xumo-xumoent-vc-119-t7wx7.fast.nbcuni.com/live/master.m3u8
+Universal Action,https://xumo-xumoent-ch828-w6val.fast.nbcuni.com/live/master.m3u8
+Universal Crime,https://xumo-xumoent-vc-107-xmuvk.fast.nbcuni.com/live/master.m3u8
+英剧频道,#genre#
+神秘博士经典,https://bbc-classicdrwho-1-us.roku.wurl.tv/playlist.m3u8
+神秘博士经典,https://bbc-classicdrwho-1-us.xumo.wurl.tv/playlist.m3u8
+骇人命案事件簿,https://all3media-midsomer-1-us.roku.wurl.tv/playlist.m3u8
+骇人命案事件簿,https://all3media-midsomer-1-us.xumo.wurl.tv/playlist.m3u8
+韩剧频道,#genre#
+MBC Drama USA,https://shd-gcp-live.edgenextcdn.net/live/bitmovin-mbc-drama-usa/ea2f5db904aff224b7066e59c7f585a2/index.m3u8
+海外剧场,#genre#
+亚洲剧台,http://103.172.187.30:12000/stream/mytv/null-11/master.m3u8
+日本综合台,#genre#
+日本电视台,https://ntv5.mov3.co/hls/ntv.m3u8
+富士电视台,https://fujitv4.mov3.co/hls/fujitv.m3u8
+朝日电视台,https://tvasahi.mov3.co/hls/tvasahi.m3u8
+日本TBS,https://tbs5.mov3.co/hls/tbs.m3u8
+东京电视台,https://tvtokyo.mov3.co/hls/tvtokyo.m3u8
 动漫少儿,#genre#
 炫动卡通,http://63.141.230.178:82/gslb/zbdq5.m3u8?id=xdkthd
 台湾频道,#genre#
