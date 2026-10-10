@@ -1,0 +1,73 @@
+name: Update live TV playlist
+
+on:
+  schedule:
+    # UTC 01:23 / 13:23 = 北京时间 09:23 / 21:23.
+    - cron: "23 1,13 * * *"
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "scripts/update-live.py"
+      - "tests/test_update_live.py"
+      - ".github/workflows/update-live.yml"
+  pull_request:
+    paths:
+      - "scripts/update-live.py"
+      - "tests/test_update_live.py"
+      - ".github/workflows/update-live.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: live-playlist-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Verify converter and failure protection
+        run: python3 -m unittest discover -s tests -p 'test_update_live.py' -v
+
+  update:
+    needs: test
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Fetch, convert and validate categories plus supplement
+        id: generate
+        run: python3 scripts/update-live.py --probe
+      - name: Commit only a changed, validated playlist
+        shell: bash
+        run: |
+          set -euo pipefail
+          if git diff --quiet -- live.txt; then
+            echo 'Playlist unchanged; no commit needed.' >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          git add -- live.txt
+          git -c user.name='github-actions[bot]' \
+              -c user.email='41898282+github-actions[bot]@users.noreply.github.com' \
+              commit -m 'chore: refresh live playlist from maintained subscriptions'
+          # Never force-push: if main moves, this run fails and the next run regenerates.
+          git push origin HEAD:main
+          echo 'Validated playlist updated. jsDelivr address is unchanged.' >> "$GITHUB_STEP_SUMMARY"
+      - name: Report upstream or validation failure
+        if: failure()
+        run: echo 'Update failed. No replacement playlist was pushed; check missing channels, download errors or stream probe results in the logs.' >> "$GITHUB_STEP_SUMMARY"
