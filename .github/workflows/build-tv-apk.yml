@@ -6,6 +6,7 @@ on:
     paths:
       - "scripts/build-custom-tv.sh"
       - "scripts/customize-tv.py"
+      - "scripts/family-ui.py"
       - "scripts/upstream-compat.py"
       - "scripts/prepare-media3.py"
       - "scripts/media3-lock.json"

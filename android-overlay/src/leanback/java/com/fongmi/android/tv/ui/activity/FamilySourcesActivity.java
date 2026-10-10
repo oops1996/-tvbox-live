@@ -43,7 +43,7 @@ public class FamilySourcesActivity extends AppCompatActivity {
         super.onCreate(state);
         prefs = getSharedPreferences("family_sources_private", 0);
         LinearLayout root = new LinearLayout(this); root.setOrientation(LinearLayout.VERTICAL);
-        root.setPadding(32, 24, 32, 24); root.setBackgroundColor(0xff06142f);
+        root.setPadding(32, 24, 32, 24); root.setBackgroundColor(0xff080a0d);
         TextView title = new TextView(this); title.setText("接口管理 · 本机保存"); title.setTextSize(24); title.setTextColor(0xffffffff); root.addView(title);
         Button add = new Button(this); add.setText("添加合法、有权使用的接口 URL"); add.setOnClickListener(v -> edit(null)); root.addView(add);
         Button fallback = new Button(this); fallback.setText("切换到默认影视接口"); fallback.setOnClickListener(v -> use(defaultConfig())); root.addView(fallback);

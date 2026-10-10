@@ -22,6 +22,9 @@ for variant, abi in [("arm64_v8a", "arm64-v8a"), ("armeabi_v7a", "armeabi-v7a")]
     info = subprocess.check_output([str(tools / "aapt"), "dump", "badging", str(apk)], text=True)
     if "package: name='com.oops.tv'" not in info or "application-label:'家庭电视'" not in info:
         raise SystemExit(f"Incorrect application identity: {apk.name}")
+    version = re.search(r"versionCode='([^']+)' versionName='([^']+)'", info)
+    if not version or version.groups() != ("4", "1.1.0 家庭电视"):
+        raise SystemExit(f"Unexpected APK version: {apk.name}")
     if f"native-code: '{abi}'" not in info:
         raise SystemExit(f"Incorrect native ABI: {apk.name}")
     subprocess.run([str(tools / "apksigner"), "verify", "--verbose", str(apk)], check=True)
@@ -40,6 +43,6 @@ for variant, abi in [("arm64_v8a", "arm64-v8a"), ("armeabi_v7a", "armeabi-v7a")]
                 with Image.open(BytesIO(archive.read(name))) as packaged:
                     same |= packaged.size == pixels.size and packaged.convert("RGBA").tobytes() == pixels.tobytes()
             if not same: raise SystemExit("APK icon pixels differ from the user supplied final image")
-    results.append({"file": apk.name, "abi": abi, "bytes": apk.stat().st_size, "sha256": hashlib.sha256(apk.read_bytes()).hexdigest(), "signed": True})
+    results.append({"file": apk.name, "abi": abi, "bytes": apk.stat().st_size, "sha256": hashlib.sha256(apk.read_bytes()).hexdigest(), "signed": True, "version_code": 4, "version_name": "1.1.0 家庭电视"})
 (out / "build-verification.json").write_text(json.dumps(results, ensure_ascii=False, indent=2) + "\n")
 print(json.dumps(results, ensure_ascii=False, indent=2))

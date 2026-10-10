@@ -1,0 +1,43 @@
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android" xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent" android:layout_height="match_parent" android:orientation="horizontal" android:background="#080A0D">
+    <LinearLayout android:layout_width="160dp" android:layout_height="match_parent" android:orientation="vertical" android:background="#101318" android:paddingStart="12dp" android:paddingEnd="12dp" android:paddingTop="22dp" android:paddingBottom="20dp">
+        <LinearLayout android:layout_width="match_parent" android:layout_height="46dp" android:orientation="horizontal" android:gravity="center_vertical" android:layout_marginBottom="18dp">
+            <ImageView android:id="@+id/logo" android:layout_width="34dp" android:layout_height="34dp" android:src="@drawable/family_tv_icon" android:contentDescription="家庭电视图标" />
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="8dp" android:text="家庭电视" android:textSize="19sp" android:textStyle="bold" android:textColor="#F4F5F7" />
+        </LinearLayout>
+        <ScrollView android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" android:scrollbars="none" android:fillViewport="false">
+            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical">
+<TextView android:id="@+id/navFilms" style="@style/Family.Nav" android:text="影视" android:drawableStart="@drawable/ic_home_vod" android:nextFocusRight="@id/sourceConnect" />
+<TextView android:id="@+id/navMedia" style="@style/Family.Nav" android:text="我的媒体" android:drawableStart="@drawable/family_media_icon" android:nextFocusRight="@id/sourceConnect" />
+<TextView android:id="@+id/navLive" style="@style/Family.Nav" android:text="直播" android:drawableStart="@drawable/ic_home_live" android:nextFocusRight="@id/sourceConnect" />
+<TextView android:id="@+id/navSearch" style="@style/Family.Nav" android:text="搜索" android:drawableStart="@drawable/ic_home_search" android:nextFocusRight="@id/sourceConnect" />
+<TextView android:id="@+id/navKeep" style="@style/Family.Nav" android:text="收藏" android:drawableStart="@drawable/ic_home_keep" android:nextFocusRight="@id/sourceConnect" />
+<TextView android:id="@+id/navHistory" style="@style/Family.Nav" android:text="历史" android:drawableStart="@drawable/family_history_icon" android:nextFocusRight="@id/sourceConnect" />
+<TextView android:id="@+id/navMore" style="@style/Family.Nav" android:text="更多" android:drawableStart="@drawable/ic_home_cast" android:nextFocusRight="@id/sourceConnect" />
+<TextView android:id="@+id/navSettings" style="@style/Family.Nav" android:text="设置" android:drawableStart="@drawable/ic_home_setting" android:nextFocusRight="@id/sourceConnect" />
+            </LinearLayout>
+        </ScrollView>
+    </LinearLayout>
+    <LinearLayout android:layout_width="0dp" android:layout_weight="1" android:layout_height="match_parent" android:orientation="vertical" android:paddingStart="24dp" android:paddingEnd="24dp" android:paddingTop="18dp" android:paddingBottom="14dp">
+        <LinearLayout android:id="@+id/toolbar" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical">
+            <LinearLayout android:layout_width="match_parent" android:layout_height="34dp" android:orientation="horizontal" android:gravity="center_vertical">
+                <TextView android:id="@+id/sourceConnect" style="@style/Family.Action" android:text="源连接" android:nextFocusRight="@id/sourceRefresh" android:nextFocusDown="@id/categories" />
+                <TextView android:id="@+id/sourceRefresh" style="@style/Family.Action" android:text="刷新" android:nextFocusLeft="@id/sourceConnect" android:nextFocusRight="@id/sourceSite" android:nextFocusDown="@id/categories" />
+                <TextView android:id="@+id/sourceSite" style="@style/Family.Action" android:text="切换站点" android:nextFocusLeft="@id/sourceRefresh" android:nextFocusDown="@id/categories" />
+                <Space android:layout_width="0dp" android:layout_height="1dp" android:layout_weight="1" />
+                <TextView android:id="@+id/clock" android:layout_width="wrap_content" android:layout_height="wrap_content" android:textColor="#AAB2C0" android:textSize="18sp" />
+            </LinearLayout>
+            <LinearLayout android:layout_width="match_parent" android:layout_height="44dp" android:orientation="horizontal" android:gravity="center_vertical">
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="影视" android:textSize="30sp" android:textStyle="bold" android:textColor="#F5F6F8" />
+                <com.fongmi.android.tv.ui.custom.CustomTitleView android:id="@+id/title" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:layout_marginStart="18dp" android:ellipsize="end" android:singleLine="true" android:focusable="false" android:textSize="16sp" android:textColor="#AAB2C0" />
+            </LinearLayout>
+            <HorizontalScrollView android:layout_width="match_parent" android:layout_height="36dp" android:scrollbars="none" android:clipToPadding="false">
+                <LinearLayout android:id="@+id/categories" android:layout_width="wrap_content" android:layout_height="match_parent" android:orientation="horizontal" android:gravity="center_vertical" />
+            </HorizontalScrollView>
+            <TextView android:id="@+id/empty" android:layout_width="match_parent" android:layout_height="wrap_content" android:paddingTop="8dp" android:paddingBottom="8dp" android:textColor="#AAB2C0" android:textSize="14sp" android:visibility="gone" />
+        </LinearLayout>
+        <com.fongmi.android.tv.ui.custom.ProgressLayout android:id="@+id/progressLayout" android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1">
+            <androidx.leanback.widget.VerticalGridView android:id="@+id/recycler" android:layout_width="match_parent" android:layout_height="match_parent" android:paddingStart="4dp" android:paddingEnd="4dp" android:paddingTop="4dp" android:paddingBottom="8dp" android:clipChildren="false" android:clipToPadding="false" android:nextFocusLeft="@id/navFilms" android:nextFocusUp="@id/categories" app:focusOutEnd="true" app:focusOutFront="true" />
+        </com.fongmi.android.tv.ui.custom.ProgressLayout>
+    </LinearLayout>
+</LinearLayout>

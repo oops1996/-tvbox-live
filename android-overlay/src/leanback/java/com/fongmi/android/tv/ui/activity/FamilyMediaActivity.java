@@ -37,7 +37,7 @@ public class FamilyMediaActivity extends AppCompatActivity {
     @Override protected void onCreate(Bundle state) {
         super.onCreate(state);
         LinearLayout root = new LinearLayout(this); root.setOrientation(LinearLayout.VERTICAL);
-        root.setPadding(32, 24, 32, 24); root.setBackgroundColor(0xff06142f);
+        root.setPadding(32, 24, 32, 24); root.setBackgroundColor(0xff080a0d);
         TextView title = new TextView(this); title.setText("我的媒体 · 本机连接");
         title.setTextSize(24); title.setTextColor(0xffffffff); root.addView(title);
         LinearLayout bar = new LinearLayout(this); root.addView(bar);

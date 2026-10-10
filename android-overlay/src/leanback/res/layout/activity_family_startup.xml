@@ -1,0 +1,14 @@
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android" android:layout_width="match_parent" android:layout_height="match_parent" android:background="#080A0D" android:fillViewport="true">
+    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:padding="28dp">
+        <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="开机自动启动" android:textSize="28sp" android:textStyle="bold" android:textColor="#F5F6F8" android:layout_marginBottom="10dp" />
+        <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="开启后，收到系统开机广播时进入影视首页，不恢复上次页面。电视厂商可能限制后台启动，请在系统中允许自启动；普通应用无法保证强制拉起；部分电视待机唤醒不发送开机广播。" android:textSize="16sp" android:textColor="#AAB2C0" android:layout_marginBottom="12dp" />
+        <TextView android:id="@+id/status" android:layout_width="match_parent" android:layout_height="wrap_content" android:textSize="15sp" android:textColor="#C2C9D5" android:layout_marginBottom="12dp" />
+<TextView android:id="@+id/startupToggle" style="@style/Family.Action" android:layout_width="match_parent" android:layout_height="42dp" android:layout_marginBottom="8dp" android:gravity="center_vertical" android:text="开机自动启动" />
+<TextView android:id="@+id/appSettings" style="@style/Family.Action" android:layout_width="match_parent" android:layout_height="42dp" android:layout_marginBottom="8dp" android:gravity="center_vertical" android:text="电视系统应用设置 · 允许自启动" />
+<TextView android:id="@+id/overlay" style="@style/Family.Action" android:layout_width="match_parent" android:layout_height="42dp" android:layout_marginBottom="8dp" android:gravity="center_vertical" android:text="后台启动相关权限 · 显示在其他应用上层" />
+<TextView android:id="@+id/homeEnable" style="@style/Family.Action" android:layout_width="match_parent" android:layout_height="42dp" android:layout_marginBottom="8dp" android:gravity="center_vertical" android:text="可选：设为电视默认桌面" />
+<TextView android:id="@+id/homeDisable" style="@style/Family.Action" android:layout_width="match_parent" android:layout_height="42dp" android:layout_marginBottom="8dp" android:gravity="center_vertical" android:text="恢复原电视桌面 · 关闭桌面模式" />
+<TextView android:id="@+id/systemSettings" style="@style/Family.Action" android:layout_width="match_parent" android:layout_height="42dp" android:layout_marginBottom="8dp" android:gravity="center_vertical" android:text="打开电视系统设置" />
+        <TextView android:id="@+id/lastBoot" android:layout_width="match_parent" android:layout_height="wrap_content" android:textSize="13sp" android:textColor="#8D97A8" android:layout_marginTop="10dp" />
+    </LinearLayout>
+</ScrollView>

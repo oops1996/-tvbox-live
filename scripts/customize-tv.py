@@ -25,8 +25,8 @@ def customize(src, repo):
     replace(src / "app/src/main/java/com/fongmi/android/tv/player/exo/ExoUtil.java",
             "MimeTypes.APPLICATION_OCTET", '"application/octet-stream"')
     gradle = src / "app/build.gradle"
-    replace(gradle, '        versionCode 1', '        versionCode 3')
-    replace(gradle, 'versionName "1.0.0 家庭电视"', 'versionName "1.0.2 家庭电视"')
+    replace(gradle, '        versionCode 1', '        versionCode 4')
+    replace(gradle, 'versionName "1.0.0 家庭电视"', 'versionName "1.1.0 家庭电视"')
     replace(gradle, '    buildTypes {', '''    signingConfigs {
         family {
             if (System.getenv("FAMILY_TV_KEYSTORE_PATH")) {
@@ -221,9 +221,14 @@ def customize(src, repo):
             dest = src / "app" / path.relative_to(repo / "android-overlay")
             dest.parent.mkdir(parents=True, exist_ok=True)
             shutil.copy2(path, dest)
+    namespace = {}
+    exec((repo / "scripts/family-ui.py").read_text(), namespace)
+    namespace["apply"](src, repo, replace)
     # Fail before Gradle if a patched XML file is malformed.
     for path in [manifest, src / "app/src/main/AndroidManifest.xml", styles, layout, pairing, res / "drawable/family_tv_banner.xml", res / "values/family_tv.xml", network_xml]:
         ET.parse(path)
+    for path in (repo / "android-overlay/src/leanback/res").rglob("*.xml"):
+        ET.parse(src / "app" / path.relative_to(repo / "android-overlay"))
     print("Family TV customization applied; original icon checksum verified.")
 
 

@@ -1,0 +1,20 @@
+<resources>
+    <string name="family_continue">继续观看</string>
+    <string name="family_recommend">为你推荐</string>
+    <style name="Family.Nav" parent="">
+        <item name="android:layout_width">match_parent</item><item name="android:layout_height">42dp</item>
+        <item name="android:layout_marginBottom">5dp</item><item name="android:background">@drawable/family_nav</item>
+        <item name="android:focusable">true</item><item name="android:focusableInTouchMode">true</item>
+        <item name="android:gravity">center_vertical</item><item name="android:paddingStart">14dp</item>
+        <item name="android:drawablePadding">16dp</item><item name="android:textColor">#EDF0F5</item>
+        <item name="android:textSize">18sp</item>
+    </style>
+    <style name="Family.Action" parent="">
+        <item name="android:layout_width">wrap_content</item><item name="android:layout_height">34dp</item>
+        <item name="android:layout_marginEnd">8dp</item><item name="android:background">@drawable/family_action</item>
+        <item name="android:focusable">true</item><item name="android:focusableInTouchMode">true</item>
+        <item name="android:gravity">center</item><item name="android:paddingStart">16dp</item>
+        <item name="android:paddingEnd">16dp</item><item name="android:textColor">#E2E5EB</item>
+        <item name="android:textSize">14sp</item><item name="android:nextFocusLeft">@id/navFilms</item>
+    </style>
+</resources>
