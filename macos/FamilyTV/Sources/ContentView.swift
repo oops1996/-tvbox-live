@@ -60,7 +60,7 @@ struct HomeView: View {
                 .foregroundStyle(.secondary)
             HStack(spacing: 16) {
                 StatCard(title: "直播频道", value: "\(model.liveChannels.count)", icon: "tv")
-                StatCard(title: "收藏", value: "\(model.favorites.count)", icon: "star")
+                StatCard(title: "收藏", value: "\(model.liveChannels.filter { model.isFavorite($0) }.count)", icon: "star")
                 StatCard(title: "历史", value: "\(model.history.count)", icon: "clock")
             }
             Spacer()
@@ -203,11 +203,13 @@ struct LiveView: View {
     var groups: [String] { Array(Set(filtered.map(\.group))).sorted() }
 
     var body: some View {
-        HSplitView {
+        VStack(spacing: 0) {
+            LiveSourceHeader()
+            Divider()
+            HSplitView {
             VStack {
                 HStack {
                     TextField("搜索频道", text: $query)
-                    Button("刷新") { Task { await model.loadLive() } }
                 }.padding()
                 List {
                     ForEach(groups, id: \.self) { group in
@@ -217,10 +219,13 @@ struct LiveView: View {
                                     Button(ch.name) { model.play(channel: ch) }
                                         .buttonStyle(.plain)
                                     Spacer()
+                                    if ch.lines.count > 1 {
+                                        Text("\(ch.lines.count) 条线路").font(.caption).foregroundStyle(.secondary)
+                                    }
                                     Button {
                                         model.toggleFavorite(ch)
                                     } label: {
-                                        Image(systemName: model.favorites.contains(ch.url) ? "star.fill" : "star")
+                                        Image(systemName: model.isFavorite(ch) ? "star.fill" : "star")
                                     }.buttonStyle(.borderless)
                                 }
                             }
@@ -230,11 +235,95 @@ struct LiveView: View {
             }.frame(minWidth: 360)
             VStack(alignment: .leading, spacing: 12) {
                 Text(model.selectedChannel?.name ?? "直播").font(.title2.bold())
+                if let channel = model.selectedChannel {
+                    HStack {
+                        Picker("播放线路", selection: Binding(get: { model.selectedLineIndex }, set: { model.switchLiveLine(to: $0) })) {
+                            ForEach(channel.lines.indices, id: \.self) { index in
+                                Text("线路 \(index + 1) / \(channel.lines.count)").tag(index)
+                            }
+                        }.frame(maxWidth: 260)
+                        Button("切换线路") { model.nextLiveLine() }.disabled(channel.lines.count < 2)
+                    }
+                    Toggle("直播直连（绕过代理 / VPN）", isOn: $model.liveDirectConnection)
+                        .help("本应用的直播通过 Wi-Fi / 以太网连接，其他功能使用原网络设置")
+                    Text(model.livePlaybackMessage).font(.caption).foregroundStyle(.secondary)
+                }
                 PlayerPanel()
-                Text(model.statusText).foregroundStyle(.secondary)
                 Spacer()
             }.padding(24)
+            }
         }
+    }
+}
+
+struct LiveSourceHeader: View {
+    @EnvironmentObject var model: AppModel
+    @State private var showImport = false
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Text("直播").font(.title2.bold())
+                Text("\(model.liveChannels.count) 个频道").foregroundStyle(.secondary)
+                Spacer()
+                Button { showImport = true } label: { Label("导入 / 更换源", systemImage: "link.badge.plus") }
+                Button { Task { await model.loadLive() } } label: {
+                    Label(model.isRefreshingLive ? "正在刷新…" : "重新导入 / 刷新", systemImage: "arrow.clockwise")
+                }
+                .buttonStyle(.borderedProminent)
+            }
+            .disabled(model.isRefreshingLive)
+            Text("当前源：\(LiveSourceClient.displayName(model.liveURL))")
+                .font(.caption).foregroundStyle(.secondary).lineLimit(1)
+            HStack(alignment: .top, spacing: 8) {
+                if model.isRefreshingLive { ProgressView().controlSize(.small) }
+                else { Image(systemName: model.liveRefreshFailed ? "exclamationmark.triangle" : (model.liveLastUpdated == nil ? "info.circle" : "checkmark.circle")) }
+                Text(model.liveRefreshMessage).lineLimit(2)
+                Spacer(minLength: 8)
+                if let date = model.liveLastUpdated {
+                    Text("最近成功：\(date.formatted(date: .abbreviated, time: .standard))")
+                        .foregroundStyle(.secondary)
+                }
+            }
+            .font(.caption)
+            .foregroundStyle(model.liveRefreshFailed ? Color.red : Color.secondary)
+        }
+        .padding(.horizontal, 20).padding(.vertical, 14)
+        .sheet(isPresented: $showImport) { LiveSourceImportView().environmentObject(model) }
+    }
+}
+
+struct LiveSourceImportView: View {
+    @EnvironmentObject var model: AppModel
+    @Environment(\.dismiss) private var dismiss
+    @State private var address = ""
+    @State private var error = ""
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text("导入直播源").font(.title2.bold())
+            Text("粘贴 TXT 或 M3U 直播列表链接。导入成功后，频道列表会与源中的最新内容同步。")
+                .foregroundStyle(.secondary)
+            TextField("https://example.com/live.txt", text: $address).textFieldStyle(.roundedBorder)
+            if !error.isEmpty { Text(error).font(.caption).foregroundStyle(.red) }
+            Text("刷新失败会保留现有列表；收藏、历史和网盘设置不会被清空。")
+                .font(.caption).foregroundStyle(.secondary)
+            HStack {
+                Spacer()
+                Button("取消") { dismiss() }.keyboardShortcut(.cancelAction)
+                Button("保存并重新导入") {
+                    do {
+                        _ = try LiveSourceClient.sourceURL(address)
+                        model.liveURL = address.trimmingCharacters(in: .whitespacesAndNewlines)
+                        dismiss()
+                        Task { await model.loadLive() }
+                    } catch { self.error = error.localizedDescription }
+                }
+                .buttonStyle(.borderedProminent).keyboardShortcut(.defaultAction)
+            }
+        }
+        .padding(24).frame(width: 560)
+        .onAppear { address = model.liveURL }
     }
 }
 
@@ -332,7 +421,7 @@ struct SearchView: View {
 
 struct FavoritesView: View {
     @EnvironmentObject var model: AppModel
-    var items: [LiveChannel] { model.liveChannels.filter { model.favorites.contains($0.url) } }
+    var items: [LiveChannel] { model.liveChannels.filter { model.isFavorite($0) } }
     var body: some View {
         VStack(alignment: .leading) {
             Text("收藏").font(.largeTitle.bold())
@@ -379,7 +468,17 @@ struct SettingsView: View {
         Form {
             Section("直播") {
                 TextField("直播源地址", text: $model.liveURL)
-                Button("重新载入直播源") { Task { await model.loadLive() } }
+                    .disabled(model.isRefreshingLive)
+                TextField("直播请求标识（User-Agent）", text: $model.liveUserAgent)
+                Toggle("直播直连（绕过代理 / VPN）", isOn: $model.liveDirectConnection)
+                Text("仅本应用直播经 Wi-Fi / 以太网连接；服务器将收到该网卡的网络请求。")
+                    .font(.caption).foregroundStyle(.secondary)
+                Text("默认与电视版一致；直播列表自带的请求标识优先。更改后重新选择频道生效。")
+                    .font(.caption).foregroundStyle(.secondary)
+                Button(model.isRefreshingLive ? "正在刷新…" : "重新导入 / 刷新直播源") { Task { await model.loadLive() } }
+                    .disabled(model.isRefreshingLive)
+                Text(model.liveRefreshMessage).font(.caption)
+                    .foregroundStyle(model.liveRefreshFailed ? Color.red : Color.secondary)
             }
             Section("OpenList / WebDAV") {
                 TextField("WebDAV 地址", text: $model.webDAVBase)

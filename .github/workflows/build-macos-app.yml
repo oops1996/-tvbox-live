@@ -53,6 +53,18 @@ jobs:
             -o "$SMOKE/MacOS/SourceSmoke"
           codesign --force --sign - "$SMOKE/MacOS/HeadlessPlayback"
           python3 macos/FamilyTV/Tests/smoke.py "$SMOKE/MacOS/HeadlessPlayback" "$SMOKE/fixtures" "$SMOKE/MacOS/SourceSmoke"
+          xcrun swiftc -target arm64-apple-macos13.0 \
+            macos/FamilyTV/Sources/LiveSources.swift \
+            macos/FamilyTV/Sources/LiveNetworkProxy.swift \
+            macos/FamilyTV/Sources/AppModel.swift \
+            macos/FamilyTV/Tests/LiveSmoke.swift \
+            -o "$SMOKE/MacOS/LiveSmoke"
+          python3 macos/FamilyTV/Tests/live-smoke.py "$SMOKE/MacOS/LiveSmoke"
+          xcrun swiftc -target arm64-apple-macos13.0 \
+            macos/FamilyTV/Sources/LiveNetworkProxy.swift \
+            macos/FamilyTV/Tests/LiveTransportSmoke.swift \
+            -o "$SMOKE/MacOS/LiveTransportSmoke"
+          python3 macos/FamilyTV/Tests/live-transport-smoke.py "$SMOKE/MacOS/LiveTransportSmoke"
 
       - name: Confirm DMG and archive contents
         shell: bash

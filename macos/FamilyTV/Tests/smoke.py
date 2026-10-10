@@ -24,6 +24,8 @@ password = secrets.token_urlsafe(12) + ':@/?#'
 expected = 'Basic ' + base64.b64encode((user + ':' + password).encode()).decode()
 requests = []
 auth_attempts = []
+live_requests = []
+live_attempts = []
 
 class Handler(SimpleHTTPRequestHandler):
     def __init__(self, *args, **kwargs):
@@ -35,6 +37,28 @@ class Handler(SimpleHTTPRequestHandler):
     def do_GET(self):
         address = urlsplit(self.path)
         query = parse_qs(address.query)
+        if address.path == '/live/list.m3u':
+            base = f'http://127.0.0.1:{self.server.server_port}'
+            data = (f'#EXTM3U\n#EXTINF:-1,备用线路测试\n{base}/live/unavailable.m3u8\n'
+                    f'#EXTINF:-1,备用线路测试\n#EXTVLCOPT:http-user-agent=fixture-live-agent\n'
+                    f'#EXTVLCOPT:http-referrer={base}/live/\n{base}/live/sample.m3u8\n').encode()
+            self.send_response(200); self.send_header('Content-Length', str(len(data))); self.end_headers(); self.wfile.write(data)
+            return
+        if address.path.startswith('/live/'):
+            live_attempts.append((address.path, self.headers.get('User-Agent'), self.headers.get('Referer')))
+            if address.path == '/live/unavailable.m3u8': self.send_error(503); return
+            valid = self.headers.get('User-Agent') == 'fixture-live-agent' and self.headers.get('Referer') == f'http://127.0.0.1:{self.server.server_port}/live/'
+            if not valid: self.send_error(403); return
+            live_requests.append(address.path)
+            path = root / Path(address.path).name
+            if not path.exists(): self.send_error(404); return
+            data = path.read_bytes()
+            self.send_response(200)
+            self.send_header('Content-Type', 'application/vnd.apple.mpegurl' if path.suffix == '.m3u8' else 'video/mp2t')
+            self.send_header('Content-Length', str(len(data))); self.end_headers()
+            try: self.wfile.write(data)
+            except (BrokenPipeError, ConnectionResetError): pass
+            return
         if address.path.startswith('/dav/'):
             auth_attempts.append((address.path, self.headers.get('Authorization') == expected))
             if self.headers.get('Authorization') != expected:
@@ -120,7 +144,9 @@ try:
         result = subprocess.run([source_binary, f'http://127.0.0.1:{server.server_port}'], timeout=60)
     required = set() if source_only else {'/dav/sample.mp4', '/dav/sample.m3u8', '/dav/sample.ts'}
     if result.returncode or not required.issubset(requests):
-        print('FAIL: playback or authenticated child requests, process result=', result.returncode, auth_attempts); sys.exit(1)
+        print('FAIL: playback or authenticated child requests, process result=', result.returncode, auth_attempts, live_attempts); sys.exit(1)
     if not source_only: print('PASS: MP4, HLS playlist and TS child requests authenticated; no credential leakage to catalogue')
+    if live_requests and not {'/live/sample.m3u8', '/live/sample.ts'}.issubset(live_requests):
+        print('FAIL: live HLS child request headers'); sys.exit(1)
 finally:
     server.shutdown()

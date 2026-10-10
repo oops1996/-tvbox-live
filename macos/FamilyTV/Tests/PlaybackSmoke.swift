@@ -1,6 +1,15 @@
 import AppKit
 import VLCKit
 
+final class PlaybackTestDefaults: UserDefaults {
+    private var values: [String: Any] = [:]
+    override func set(_ value: Any?, forKey key: String) { values[key] = value }
+    override func object(forKey key: String) -> Any? { values[key] }
+    override func string(forKey key: String) -> String? { values[key] as? String }
+    override func data(forKey key: String) -> Data? { values[key] as? Data }
+    override func removeObject(forKey key: String) { values[key] = nil }
+}
+
 @main
 struct PlaybackSmoke {
     @MainActor static func main() {
@@ -91,6 +100,54 @@ struct PlaybackSmoke {
         playback.stop()
         try check(!playback.isPlaying, "Stop failed")
 
+        let defaults = PlaybackTestDefaults()
+        defaults.set(base + "/live/list.m3u", forKey: "liveURL")
+        let model = AppModel(defaults: defaults)
+        await model.loadLive()
+        try check(model.liveChannels.count == 1 && model.liveChannels[0].lines.count == 2, "Duplicate live channels not grouped")
+        let recoveryHost = PlaybackVideoHost(playback: model.playback, role: .embedded)
+        window.contentView = recoveryHost
+        model.playback.volume = 0
+        model.play(channel: model.liveChannels[0])
+        try await waitForVideo(model.playback, "Failed live line did not switch to playable HLS")
+        try check(model.selectedLineIndex == 1 && model.history.count == 1, "Wrong recovery line or duplicate history")
+        model.playback.stop()
+        try await Task.sleep(nanoseconds: 1_000_000_000)
+        try check(!model.playback.isPlaying && model.selectedLineIndex == 1, "Stop triggered automatic live playback")
+        model.playback.togglePause()
+        try await waitForVideo(model.playback, "Playback button did not restart stopped live media")
+        model.playback.stop()
+        print("PASS: real VLC failure switches to decoded HLS with User-Agent/Referer on child requests, duplicate channel merged, stop respected")
+
+        model.selectedChannel = nil
+        model.liveDirectConnection = true
+        model.play(channel: model.liveChannels[0], line: 1)
+        model.playback.stop()
+        try await Task.sleep(nanoseconds: 600_000_000)
+        try check(model.playback.playerIdentity == nil, "Stopped direct startup resumed after endpoint became ready")
+        model.play(channel: model.liveChannels[0], line: 1)
+        try await waitForVideo(model.playback, "Direct HLS relay did not decode with child request headers")
+        try check(model.history.allSatisfy { !$0.url.contains("/direct/") }, "Transport URL leaked into history")
+        model.playback.stop()
+        print("PASS: direct HLS relay decoded with child headers; startup cancellation and original history URLs preserved")
+
+        if let snapshot = env["FAMILYTV_TEST_LIVE_SNAPSHOT"] {
+            model.liveChannels = try LiveSourceClient.parse(String(contentsOfFile: snapshot, encoding: .utf8))
+            let direct = env["FAMILYTV_TEST_LIVE_DIRECT"] == "1"
+            model.playback.stop(); model.selectedChannel = nil
+            model.liveDirectConnection = direct
+            for name in direct ? ["江西卫视", "CCTV7", "湖南卫视"] : ["CCTV7", "湖南卫视"] {
+                guard let channel = model.liveChannels.first(where: { $0.name == name }) else { throw Failure.check("Missing live test channel") }
+                model.play(channel: channel)
+                try await waitForVideo(model.playback, "Actual \(name) did not render", timeout: 55)
+                let frames = model.playback.displayedVideoFrames
+                try await Task.sleep(nanoseconds: 3_000_000_000)
+                try check(model.playback.displayedVideoFrames > frames + 5, "Real live stopped rendering")
+                print("REAL LIVE: \(name) direct=\(direct) line=\(model.selectedLineIndex + 1)/\(channel.lines.count) displayed=\(model.playback.displayedVideoFrames) resolution=\(model.playback.resolution)")
+                model.playback.stop()
+            }
+        }
+
         let imported = try await FilmSourceClient.importSources(from: base + "/config.json")
         try check(imported.count == 2 && imported.filter(\.canBrowse).count == 1, "TVBox compatibility detection failed")
         let native = imported.first { $0.canBrowse }!
@@ -113,13 +170,13 @@ struct PlaybackSmoke {
         window.orderOut(nil)
     }
 
-    @MainActor static func waitForVideo(_ playback: IPTVPlayer, _ label: String) async throws {
-        for _ in 0..<120 {
+    @MainActor static func waitForVideo(_ playback: IPTVPlayer, _ label: String, timeout: Double = 12) async throws {
+        for _ in 0..<Int(timeout * 10) {
             if playback.isPlaying && !playback.isBuffering && !playback.failed { return }
             if playback.failed { throw Failure.check(label) }
             try await Task.sleep(nanoseconds: 100_000_000)
         }
-        print("Playback diagnostic: decoded=\(playback.decodedVideoFrames), displayed=\(playback.displayedVideoFrames), status=\(playback.status)")
+        print("Playback diagnostic: decoded=\(playback.decodedVideoFrames), displayed=\(playback.displayedVideoFrames), status=\(playback.status), ticks=\(playback.stateRefreshCount), engine=\(playback.engineState), hasMedia=\(playback.hasMedia), failed=\(playback.failed), paused=\(playback.isPaused)")
         throw Failure.check(label)
     }
 

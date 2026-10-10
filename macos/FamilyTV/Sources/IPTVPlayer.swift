@@ -1,7 +1,7 @@
 import AppKit
 import Combine
 import SwiftUI
-import VLCKit
+@preconcurrency import VLCKit
 
 /// Owns one VLC player and drawable across navigation and window changes. Credentials stay in memory.
 @MainActor
@@ -37,11 +37,20 @@ final class IPTVPlayer: ObservableObject {
     let videoView = PlaybackVideoView(frame: .zero)
     var decodedVideoFrames: Int { Int(player?.media?.statistics.decodedVideo ?? 0) }
     var displayedVideoFrames: Int { Int(player?.media?.statistics.displayedPictures ?? 0) }
+    var onFailure: ((URL, String) -> Void)?
+    var onVideoStarted: ((URL) -> Void)?
+    var onRetry: (() -> Void)?
+    var onStop: (() -> Void)?
+    private(set) var stateRefreshCount = 0
+    var engineState: String { player.map { String(describing: $0.state) } ?? "released" }
     private var player: VLCMediaPlayer?
     private var timer: AnyCancellable?
     private var request: Request?
     private var startedAt = Date()
     private var receivedVideo = false
+    private var userStopped = false
+    private var lastFrameCount = 0
+    private var lastFrameAt = Date()
 
     private struct Request {
         let name: String
@@ -50,6 +59,7 @@ final class IPTVPlayer: ObservableObject {
         let isLive: Bool
         let softwareDecoding: Bool
         let cacheMilliseconds: Int
+        let transportURL: URL?
     }
 
     init() {
@@ -60,9 +70,9 @@ final class IPTVPlayer: ObservableObject {
     }
 
     func play(name: String, url: URL, headers: [String: String], isLive: Bool,
-              softwareDecoding: Bool, cacheMilliseconds: Int) {
+              softwareDecoding: Bool, cacheMilliseconds: Int, transportURL: URL? = nil) {
         request = Request(name: name, url: url, headers: headers, isLive: isLive,
-                          softwareDecoding: softwareDecoding, cacheMilliseconds: cacheMilliseconds)
+                          softwareDecoding: softwareDecoding, cacheMilliseconds: cacheMilliseconds, transportURL: transportURL)
         self.isLive = isLive
         mediaTitle = name
         resolution = ""
@@ -74,15 +84,13 @@ final class IPTVPlayer: ObservableObject {
     private func startRequest() {
         guard let request else { return }
         // Disconnect the old drawable before switching to avoid stale frames and extra windows.
-        player?.drawable = nil
-        player?.stop()
-        let next = VLCMediaPlayer(options: ["--quiet", "--no-video-title-show",
-                                            "--no-media-library", "--no-interact"])
+        releasePlayer()
+        let next = VLCMediaPlayer(options: ["--quiet", "--no-video-title-show", "--no-media-library", "--no-interact"])
         next.drawable = videoView
         next.audio?.volume = Int32(volume)
         next.audio?.isMuted = isMuted
 
-        var mediaURL = request.url
+        var mediaURL = request.transportURL ?? request.url
         // libVLC's HTTP access modules support URL credentials (including HLS child requests).
         // They stay in memory; history retains the original credential-free URL.
         if let authorization = request.headers.first(where: { $0.key.lowercased() == "authorization" })?.value,
@@ -115,6 +123,9 @@ final class IPTVPlayer: ObservableObject {
         player = next
         startedAt = Date()
         receivedVideo = false
+        userStopped = false
+        lastFrameCount = 0
+        lastFrameAt = startedAt
         failed = false
         hasMedia = true
         isBuffering = true
@@ -128,17 +139,18 @@ final class IPTVPlayer: ObservableObject {
     }
 
     func togglePause() {
-        guard let player else { return }
+        guard let player else { if request != nil { retry() }; return }
         // VLCKit can retain a Buffering state after a seek or pause. Keep the user's
         // pause intent separately so Resume never pauses again or restarts the URL.
-        if isPaused { isPaused = false; player.play() }
+        if isPaused { isPaused = false; lastFrameAt = Date(); player.play() }
         else if player.state == .ended || player.state == .stopped || player.state == .error { retry() }
         else { isPaused = true; player.pause() }
         refreshState()
     }
 
     func stop() {
-        player?.stop()
+        userStopped = true
+        releasePlayer()
         isPlaying = false
         isPaused = false
         isBuffering = false
@@ -146,9 +158,22 @@ final class IPTVPlayer: ObservableObject {
         canSeek = false
         position = 0
         status = "已停止"
+        onStop?()
     }
 
-    func retry() { startRequest() }
+    private func releasePlayer() {
+        guard let old = player else { return }
+        old.drawable = nil
+        player = nil
+        // Retain a retired player until its asynchronous stop completes. Network
+        // teardown and the final release must not delay the next line on the UI thread.
+        DispatchQueue.global(qos: .utility).async {
+            old.stop()
+            while old.state != .stopped { Thread.sleep(forTimeInterval: 0.1) }
+        }
+    }
+
+    func retry() { onRetry?(); startRequest() }
 
     func seek(to value: Double) {
         guard canSeek else { return }
@@ -189,7 +214,8 @@ final class IPTVPlayer: ObservableObject {
     }
 
     private func refreshState() {
-        guard let player, let request, hasMedia else { return }
+        stateRefreshCount += 1
+        guard let player, let request, hasMedia, !userStopped, !failed else { return }
         isPlaying = player.isPlaying && !isPaused
         duration = Double(player.media?.length.intValue ?? 0) / 1000
         canSeek = !request.isLive && player.isSeekable && duration > 0
@@ -202,7 +228,14 @@ final class IPTVPlayer: ObservableObject {
            width.intValue > 0, height.intValue > 0 {
             resolution = "\(width.intValue) × \(height.intValue)"
         }
-        receivedVideo = receivedVideo || (player.media?.statistics.displayedPictures ?? 0) > 0
+        let frames = displayedVideoFrames
+        if frames > lastFrameCount {
+            lastFrameAt = Date(); lastFrameCount = frames
+            if !receivedVideo {
+                receivedVideo = true
+                onVideoStarted?(request.url)
+            }
+        }
         if isPaused {
             if player.isPlaying { player.pause() }
             isBuffering = false
@@ -223,23 +256,44 @@ final class IPTVPlayer: ObservableObject {
             status = "已暂停：\(request.name)"
         case .error:
             markFailed()
+            return
         case .ended:
+            if request.isLive { markFailed(reason: "直播连接已结束"); return }
             isBuffering = false
             status = request.isLive ? "直播连接已结束，可点击重试" : "播放已结束"
         case .stopped:
-            isBuffering = false
+            // Failed HTTP requests can return directly to Stopped without an Error
+            // event. Only an explicit user stop should suppress live recovery.
+            if request.isLive && Date().timeIntervalSince(startedAt) > 2 { markFailed(); return }
+            isBuffering = !receivedVideo
         default: break
         }
         // A playback clock alone is not proof of decoded video. Make silent black screens actionable.
-        if isBuffering && Date().timeIntervalSince(startedAt) > 30 && !receivedVideo {
-            player.stop()
+        let wait = Date().timeIntervalSince(startedAt)
+        let bytes = player.media?.statistics.readBytes ?? 0
+        if !receivedVideo && (wait > 25 || (request.isLive && wait > 8 && bytes == 0)) {
             markFailed()
+            return
+        }
+        if request.isLive && receivedVideo && Date().timeIntervalSince(lastFrameAt) > 20 {
+            markFailed(reason: "视频画面持续中断")
+            return
+        }
+        if isBuffering && !receivedVideo && wait > 3 {
+            status = bytes == 0 ? "等待线路返回数据：\(request.name)" : "线路已有响应，正在等待视频画面：\(request.name)"
         }
     }
 
-    private func markFailed() {
+    private func markFailed(reason: String? = nil) {
+        guard !failed, !userStopped, let request else { return }
+        let bytes = player?.media?.statistics.readBytes ?? 0
+        let detail = reason ?? (bytes == 0 ? "线路未返回视频数据，请检查 Mac 网络或切换线路"
+            : "线路已有响应，但未显示画面，可能是分片连接或解码失败")
+        releasePlayer()
         failed = true
+        isPlaying = false
         isBuffering = false
-        status = "未能读取视频画面。可重试、切换频道，或在设置中调整软件解码和缓冲。"
+        status = detail
+        onFailure?(request.url, detail)
     }
 }
