@@ -16,18 +16,8 @@ struct FilmSource: Identifiable, Codable, Hashable {
 struct FilmCategory: Identifiable, Hashable {
     let id: String
     let name: String
-    var group: String {
-        if name.contains("短剧") { return "短剧" }
-        if name.contains("综艺") || name.contains("真人秀") { return "综艺" }
-        if name.contains("动漫") || name.contains("动画") { return "动漫" }
-        if name.contains("戏曲") || name.contains("相声") || name.contains("评书") { return "戏曲" }
-        if name.contains("音乐") || name.contains("演唱") { return "音乐" }
-        if name.contains("体育") || name.contains("球") { return "体育" }
-        if name.contains("教学") || name.contains("学习") || name.contains("教育") { return "学习" }
-        if name.contains("剧") || name.contains("电视") { return "电视剧" }
-        if name.contains("电影") || name.contains("片") { return "电影" }
-        return "其他"
-    }
+    var parentID = ""
+    var group: String { FilmTaxonomy.group(name) }
 }
 
 struct FilmEpisode: Identifiable, Hashable {
@@ -48,6 +38,12 @@ struct FilmItem: Identifiable, Hashable {
     let remarks: String
     let description: String
     let lines: [FilmLine]
+    var categoryID = ""
+    var parentCategoryID = ""
+    var area = ""
+    var year = ""
+    var genre = ""
+    var language = ""
 }
 struct FilmPage {
     var categories: [FilmCategory] = []
@@ -154,7 +150,16 @@ enum FilmSourceClient {
         components.queryItems = query
         guard let endpoint = components.url else { throw SourceError.invalidURL }
         let data = try await fetch(endpoint)
-        return try source.kind == .xml ? parseXML(data) : parseJSON(json(data))
+        var result = try source.kind == .xml ? parseXML(data) : parseJSON(json(data))
+        // Most CMS detail endpoints omit class; retrieve their public class list separately.
+        if result.categories.isEmpty, category == nil, page == 1, id == nil, search?.isEmpty != false {
+            components.queryItems = query.filter { !managed.contains($0.name) } + [URLQueryItem(name: "ac", value: "list"), URLQueryItem(name: "pg", value: "1")]
+            if let classURL = components.url, let classData = try? await fetch(classURL),
+               let classPage = try? source.kind == .xml ? parseXML(classData) : parseJSON(json(classData)) {
+                result.categories = classPage.categories
+            }
+        }
+        return result
     }
 
     static func string(_ value: Any?) -> String {
@@ -180,14 +185,16 @@ enum FilmSourceClient {
     static func parseJSON(_ root: [String: Any]) -> FilmPage {
         let categories = (root["class"] as? [[String: Any]] ?? []).compactMap { item -> FilmCategory? in
             let id = string(item["type_id"]), name = string(item["type_name"])
-            return id.isEmpty || name.isEmpty ? nil : FilmCategory(id: id, name: name)
+            return id.isEmpty || name.isEmpty ? nil : FilmCategory(id: id, name: name, parentID: string(item["type_pid"]))
         }
         let items = (root["list"] as? [[String: Any]] ?? []).compactMap { item -> FilmItem? in
             let id = string(item["vod_id"]), name = string(item["vod_name"])
             guard !id.isEmpty, !name.isEmpty else { return nil }
             return FilmItem(id: id, name: name, category: string(item["type_name"]), poster: string(item["vod_pic"]),
                             remarks: string(item["vod_remarks"]), description: string(item["vod_content"]),
-                            lines: lines(names: string(item["vod_play_from"]), urls: string(item["vod_play_url"])))
+                            lines: lines(names: string(item["vod_play_from"]), urls: string(item["vod_play_url"])),
+                            categoryID: string(item["type_id"]), parentCategoryID: string(item["type_id_1"]), area: string(item["vod_area"]), year: string(item["vod_year"]),
+                            genre: string(item["vod_class"]), language: string(item["vod_lang"]))
         }
         return FilmPage(categories: categories, items: items, pageCount: max(1, Int(string(root["pagecount"])) ?? 1))
     }
@@ -207,12 +214,13 @@ private final class FilmXMLParser: NSObject, XMLParserDelegate {
     private var text = ""
     private var video: [String: String]?
     private var categoryID = ""
+    private var parentID = ""
     private var lineName = ""
     private var playNames: [String] = []
     private var playURLs: [String] = []
     func parser(_ parser: XMLParser, didStartElement name: String, namespaceURI: String?, qualifiedName: String?, attributes: [String: String]) {
         text = ""
-        if name == "ty" { categoryID = attributes["id"] ?? "" }
+        if name == "ty" { categoryID = attributes["id"] ?? ""; parentID = attributes["pid"] ?? "" }
         if name == "list" { result.pageCount = max(1, Int(attributes["pagecount"] ?? "1") ?? 1) }
         if name == "video" { video = [:]; playNames = []; playURLs = [] }
         if name == "dd" { lineName = attributes["flag"] ?? "线路" }
@@ -221,12 +229,14 @@ private final class FilmXMLParser: NSObject, XMLParserDelegate {
     func parser(_ parser: XMLParser, foundCDATA block: Data) { text += String(data: block, encoding: .utf8) ?? "" }
     func parser(_ parser: XMLParser, didEndElement name: String, namespaceURI: String?, qualifiedName: String?) {
         let value = text.trimmingCharacters(in: .whitespacesAndNewlines)
-        if name == "ty", !categoryID.isEmpty { result.categories.append(FilmCategory(id: categoryID, name: value)) }
+        if name == "ty", !categoryID.isEmpty { result.categories.append(FilmCategory(id: categoryID, name: value, parentID: parentID)) }
         if name == "dd" { playNames.append(lineName); playURLs.append(value) }
         if name == "video", let v = video, let id = v["id"], let title = v["name"] {
             result.items.append(FilmItem(id: id, name: title, category: v["type"] ?? "", poster: v["pic"] ?? "",
                                          remarks: v["note"] ?? "", description: v["des"] ?? "",
-                                         lines: FilmSourceClient.lines(names: playNames.joined(separator: "$$$"), urls: playURLs.joined(separator: "$$$"))))
+                                         lines: FilmSourceClient.lines(names: playNames.joined(separator: "$$$"), urls: playURLs.joined(separator: "$$$")),
+                                         categoryID: v["tid"] ?? "", parentCategoryID: v["tid1"] ?? "", area: v["area"] ?? "", year: v["year"] ?? "",
+                                         genre: v["class"] ?? "", language: v["lang"] ?? ""))
             video = nil
         } else if video != nil { video?[name] = value }
         text = ""
@@ -236,28 +246,39 @@ private final class FilmXMLParser: NSObject, XMLParserDelegate {
 @MainActor
 final class FilmLibrary: ObservableObject {
     @Published private(set) var sources: [FilmSource] = []
-    @Published var selectedID: UUID?
+    @Published private(set) var selectedID: UUID?
     @Published private(set) var categories: [FilmCategory] = []
     @Published private(set) var items: [FilmItem] = []
     @Published private(set) var detail: FilmItem?
     @Published private(set) var status = "粘贴影视配置或采集接口地址，导入后可随时更换。"
     @Published private(set) var busy = false
-    @Published private(set) var page = 1
-    @Published private(set) var pageCount = 1
+    @Published private(set) var hasMore = false
+    @Published private(set) var loadedPages = 0
     private var selectionToken = UUID()
+    private let defaults: UserDefaults
+    private var filter = FilmFilter()
+    private var search = ""
+    private var browseCategories: [String?] = []
+    private var categoryIndex = 0
+    private var nextPage = 1
+    private var seen = Set<String>()
     var selected: FilmSource? { sources.first { $0.id == selectedID } }
 
-    init() {
-        if let data = UserDefaults.standard.data(forKey: "filmSources"),
+    init(defaults: UserDefaults = .standard) {
+        self.defaults = defaults
+        if let data = defaults.data(forKey: "filmSources"),
            let stored = try? JSONDecoder().decode([FilmSource].self, from: data) { sources = stored }
-        selectedID = UserDefaults.standard.string(forKey: "filmSelectedID").flatMap(UUID.init(uuidString:))
+        selectedID = defaults.string(forKey: "filmSelectedID").flatMap(UUID.init(uuidString:))
+        if selected == nil { selectedID = nil }
     }
 
     func importURL(_ text: String) async {
+        let token = UUID(); selectionToken = token
         busy = true
-        defer { busy = false }
+        defer { if selectionToken == token { busy = false } }
         do {
             let imported = try await FilmSourceClient.importSources(from: text)
+            guard selectionToken == token else { return }
             for var source in imported {
                 if let index = sources.firstIndex(where: { $0.origin == source.origin && $0.api == source.api && $0.name == source.name }) {
                     source = FilmSource(id: sources[index].id, name: source.name, api: source.api, origin: source.origin, kind: source.kind, note: source.note)
@@ -266,41 +287,116 @@ final class FilmLibrary: ObservableObject {
             }
             save()
             let native = imported.filter(\.canBrowse).count
-            status = "已导入 \(imported.count) 个站点，其中 \(native) 个可直接读取；其余站点的兼容情况见列表。"
+            status = "已导入 \(imported.count) 个站点，其中 \(native) 个可直接读取。"
+            busy = false
             if let first = sources.first(where: { $0.origin == text && $0.canBrowse }) { await select(first.id) }
-        } catch { status = "导入失败：\(error.localizedDescription)" }
+        } catch { if selectionToken == token { status = "导入失败：\(error.localizedDescription)" } }
+    }
+
+    /// Called only after the user confirms the exact selected entries in source management.
+    @discardableResult func removeSources(_ ids: Set<UUID>) -> Int {
+        let count = sources.filter { ids.contains($0.id) }.count
+        guard count > 0 else { return 0 }
+        selectionToken = UUID(); busy = false
+        sources.removeAll { ids.contains($0.id) }
+        if let id = selectedID, ids.contains(id) {
+            selectedID = nil
+            defaults.removeObject(forKey: "filmSelectedID")
+            categories = []; items = []; detail = nil; hasMore = false
+            browseCategories = []; seen = []; loadedPages = 0
+        }
+        save()
+        status = "已删除 \(count) 个源。可随时重新导入；影视文件和网盘设置不受影响。"
+        return count
+    }
+
+    func clearSelection() {
+        selectionToken = UUID(); busy = false; selectedID = nil
+        defaults.removeObject(forKey: "filmSelectedID")
+        categories = []; items = []; detail = nil; hasMore = false; loadedPages = 0
+        status = "请选择影视源。"
     }
 
     func select(_ id: UUID) async {
-        selectionToken = UUID()
-        busy = false
+        guard sources.contains(where: { $0.id == id }) else { return }
+        selectionToken = UUID(); busy = false
         selectedID = id
-        UserDefaults.standard.set(id.uuidString, forKey: "filmSelectedID")
-        categories = []; items = []; detail = nil; page = 1; pageCount = 1
+        defaults.set(id.uuidString, forKey: "filmSelectedID")
+        categories = []; items = []; detail = nil; hasMore = false; loadedPages = 0
         guard let selected else { return }
-        if selected.kind == .subscription { status = selected.note; return }
         guard selected.canBrowse else { status = selected.note; return }
-        await load()
+        await browse()
     }
 
-    func load(category: String? = nil, page requestedPage: Int = 1, search: String? = nil) async {
+    func browse(filter: FilmFilter = FilmFilter(), category: String? = nil, search: String = "") async {
         guard let source = selected, source.canBrowse else { return }
-        let token = UUID(); selectionToken = token
-        busy = true
+        let token = UUID(); selectionToken = token; busy = true
         defer { if selectionToken == token { busy = false } }
+        self.filter = filter; self.search = search.trimmingCharacters(in: .whitespacesAndNewlines)
+        items = []; detail = nil; seen = []; loadedPages = 0; categoryIndex = 0; nextPage = 1; hasMore = false
         do {
-            let result = try await FilmSourceClient.request(source, category: category, page: requestedPage, search: search)
-            guard selectionToken == token else { return }
-            if !result.categories.isEmpty { categories = result.categories }
-            items = result.items; detail = nil; page = requestedPage; pageCount = result.pageCount
-            status = result.items.isEmpty ? "此分类没有返回影片，可更换分类或源。" : "\(source.name) · 第 \(page) / \(pageCount) 页"
+            var initial: FilmPage?
+            if categories.isEmpty {
+                let result = try await FilmSourceClient.request(source)
+                guard selectionToken == token else { return }
+                categories = result.categories
+                if filter.isEmpty, category == nil, self.search.isEmpty { initial = result }
+            }
+            if !self.search.isEmpty { browseCategories = [nil] }
+            else if let category { browseCategories = [category] }
+            else { browseCategories = filter.candidateCategories(categories) }
+            hasMore = !browseCategories.isEmpty
+            if let initial {
+                append(initial.items)
+                loadedPages = 1; nextPage = 2; hasMore = initial.pageCount > 1
+                if !hasMore { categoryIndex = browseCategories.count }
+                updateStatus(source)
+            } else { await readMore(source, token: token) }
         } catch { if selectionToken == token { status = "读取失败：\(error.localizedDescription)" } }
+    }
+
+    func loadMore() async {
+        guard !busy, hasMore, let source = selected else { return }
+        let token = UUID(); selectionToken = token; busy = true
+        defer { if selectionToken == token { busy = false } }
+        await readMore(source, token: token)
+    }
+
+    private func readMore(_ source: FilmSource, token: UUID) async {
+        let startingCount = items.count
+        // Bound each action; continue from the last source page when the user loads more.
+        for _ in 0..<6 {
+            guard selectionToken == token, categoryIndex < browseCategories.count else { break }
+            do {
+                let result = try await FilmSourceClient.request(source, category: browseCategories[categoryIndex], page: nextPage, search: search)
+                guard selectionToken == token else { return }
+                append(result.items); loadedPages += 1
+                if nextPage >= result.pageCount { categoryIndex += 1; nextPage = 1 }
+                else { nextPage += 1 }
+                hasMore = categoryIndex < browseCategories.count
+                if !hasMore || items.count - startingCount >= 40 { break }
+            } catch {
+                guard selectionToken == token else { return }
+                status = "读取失败：\(error.localizedDescription)；已加载结果保留，点击继续加载重试。"
+                return
+            }
+        }
+        guard selectionToken == token else { return }
+        updateStatus(source)
+    }
+
+    private func append(_ values: [FilmItem]) {
+        for item in values where filter.matches(item, categories: categories) {
+            if seen.insert(item.id).inserted { items.append(item) }
+        }
+    }
+    private func updateStatus(_ source: FilmSource) {
+        status = "\(source.name) · 已检查 \(loadedPages) 页 · 找到 \(items.count) 部" + (hasMore ? "，可继续加载" : "，已到末尾")
     }
 
     func open(_ item: FilmItem) async {
         guard let source = selected else { return }
-        let token = UUID(); selectionToken = token
-        busy = true
+        let token = UUID(); selectionToken = token; busy = true
         defer { if selectionToken == token { busy = false } }
         do {
             let result = try await FilmSourceClient.request(source, id: item.id)
@@ -311,6 +407,6 @@ final class FilmLibrary: ObservableObject {
     }
 
     private func save() {
-        if let data = try? JSONEncoder().encode(sources) { UserDefaults.standard.set(data, forKey: "filmSources") }
+        if let data = try? JSONEncoder().encode(sources) { defaults.set(data, forKey: "filmSources") }
     }
 }

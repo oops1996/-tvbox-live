@@ -10,6 +10,7 @@ import subprocess
 import sys
 import tempfile
 import threading
+import time
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs, urlsplit, quote
 
@@ -81,16 +82,24 @@ class Handler(SimpleHTTPRequestHandler):
             payload = {'sites': [{'name': 'JSON 测试源', 'type': 1, 'api': base + '/api.json'},
                                  {'name': 'Android 测试源', 'type': 3, 'api': 'csp_Test'}]}
         elif address.path == '/api.json':
-            payload = {'class': [{'type_id': 1, 'type_name': '电影'}, {'type_id': 2, 'type_name': '电视剧'},
-                                  {'type_id': 3, 'type_name': '综艺'}], 'list': [video], 'pagecount': 3}
+            payload = {'list': [video], 'pagecount': 3}
+            if query.get('ac') == ['list']:
+                payload['class'] = [{'type_id': 1, 'type_name': '电影'}, {'type_id': 2, 'type_name': '电视剧'}, {'type_id': 3, 'type_name': '综艺'}]
         elif address.path == '/api.xml':
-            data = f'''<rss><class><ty id="1">电影</ty><ty id="2">电视剧</ty><ty id="3">综艺</ty></class>
-<list pagecount="3"><video><id>1</id><name>测试影片</name><type>电视剧</type><dl>
+            classes = '<class><ty id="1">电影</ty><ty id="2">电视剧</ty><ty id="3">综艺</ty></class>' if query.get('ac') != ['videolist'] else ''
+            data = f'''<rss>{classes}
+<list pagecount="3"><video><id>1</id><name>测试影片</name><type>电视剧</type><tid>2</tid><area>美国</area><year>2026</year><lang>英语</lang><class>悬疑</class><dl>
 <dd flag="测试线路"><![CDATA[第1集${base}/dav/sample.m3u8#第2集${base}/dav/sample.mp4]]></dd>
 </dl></video></list></rss>'''.encode()
             self.send_response(200); self.send_header('Content-Type', 'application/xml')
             self.send_header('Content-Length', str(len(data))); self.end_headers(); self.wfile.write(data)
             return
+        elif address.path in ['/browse.json', '/slow.json']:
+            if address.path == '/slow.json': time.sleep(0.3)
+            pg = int(query.get('pg', ['1'])[0])
+            payload = {'pagecount': 2, 'list': [{'vod_id': str(100 + pg), 'vod_name': '筛选测试' + str(pg), 'type_id': '10', 'type_name': '欧美剧', 'vod_area': '英国' if pg == 1 else '美国', 'vod_class': '悬疑,犯罪', 'vod_year': '2026'}]}
+            if query.get('ac') == ['list']:
+                payload['class'] = [{'type_id': '2', 'type_name': '电视剧'}, {'type_id': '10', 'type_pid': '2', 'type_name': '欧美剧'}, {'type_id': '11', 'type_pid': '2', 'type_name': '国产剧'}]
         else:
             self.send_error(404)
             return
@@ -105,12 +114,13 @@ env['FAMILYTV_TEST_USER'] = user
 env['FAMILYTV_TEST_PASSWORD'] = password
 env['FAMILYTV_TEST_AUTH_BASE_URL'] = f'http://{quote(user,safe="")}:{quote(password,safe="")}@127.0.0.1:{server.server_port}'
 try:
-    result = subprocess.run([binary, str(root.resolve()), f'http://127.0.0.1:{server.server_port}'], env=env, timeout=120)
+    source_only = os.environ.get('FAMILYTV_TEST_SOURCE_ONLY') == '1'
+    result = subprocess.CompletedProcess([], 0) if source_only else subprocess.run([binary, str(root.resolve()), f'http://127.0.0.1:{server.server_port}'], env=env, timeout=120)
     if source_binary and result.returncode == 0:
         result = subprocess.run([source_binary, f'http://127.0.0.1:{server.server_port}'], timeout=60)
-    required = {'/dav/sample.mp4', '/dav/sample.m3u8', '/dav/sample.ts'}
+    required = set() if source_only else {'/dav/sample.mp4', '/dav/sample.m3u8', '/dav/sample.ts'}
     if result.returncode or not required.issubset(requests):
         print('FAIL: playback or authenticated child requests, process result=', result.returncode, auth_attempts); sys.exit(1)
-    print('PASS: MP4, HLS playlist and TS child requests authenticated; no credential leakage to catalogue')
+    if not source_only: print('PASS: MP4, HLS playlist and TS child requests authenticated; no credential leakage to catalogue')
 finally:
     server.shutdown()

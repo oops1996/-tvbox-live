@@ -7,8 +7,9 @@
     <key>CFBundleIdentifier</key><string>com.oops.familytv.mac</string>
     <key>CFBundleName</key><string>家庭电视</string>
     <key>CFBundlePackageType</key><string>APPL</string>
-    <key>CFBundleShortVersionString</key><string>0.2.0</string>
-    <key>CFBundleVersion</key><string>2</string>
+    <key>CFBundleShortVersionString</key><string>0.3.0</string>
+    <key>CFBundleVersion</key><string>3</string>
+    <key>CFBundleIconFile</key><string>FamilyTV.icns</string>
     <key>LSMinimumSystemVersion</key><string>13.0</string>
     <key>NSLocalNetworkUsageDescription</key><string>用于访问家庭局域网中的 OpenList/WebDAV 影视库。</string>
     <key>NSAppTransportSecurity</key>

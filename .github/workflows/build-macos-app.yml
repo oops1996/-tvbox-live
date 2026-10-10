@@ -47,6 +47,8 @@ jobs:
             -o "$SMOKE/MacOS/HeadlessPlayback"
           xcrun swiftc -target arm64-apple-macos13.0 \
             macos/FamilyTV/Sources/FilmSources.swift \
+            macos/FamilyTV/Sources/FilmTaxonomy.swift \
+            macos/FamilyTV/Sources/FilmRanking.swift \
             macos/FamilyTV/Tests/SourceSmoke.swift \
             -o "$SMOKE/MacOS/SourceSmoke"
           codesign --force --sign - "$SMOKE/MacOS/HeadlessPlayback"

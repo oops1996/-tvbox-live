@@ -26,11 +26,12 @@ APP="$OUT/家庭电视.app"
 [[ ! -e "$APP" ]] || { echo "Output already exists: $APP; choose a new FAMILYTV_OUTPUT_DIR" >&2; exit 1; }
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Frameworks" "$APP/Contents/Resources"
 cp macos/FamilyTV/Info.plist "$APP/Contents/Info.plist"
+cp macos/FamilyTV/Resources/FamilyTV.icns "$APP/Contents/Resources/FamilyTV.icns"
 ditto "$FRAMEWORK" "$APP/Contents/Frameworks/VLCKit.framework"
 cp macos/FamilyTV/THIRD_PARTY_NOTICES.md "$APP/Contents/Resources/THIRD_PARTY_NOTICES.md"
 cp macos/FamilyTV/LICENSE-VLCKit.txt "$APP/Contents/Resources/LICENSE-VLCKit.txt"
 
-SWIFT_FLAGS=(-module-cache-path "$DEPS/module-cache")
+SWIFT_FLAGS=(-module-cache-path "${FAMILYTV_MODULE_CACHE:-$DEPS/module-cache}")
 if [[ -n "${FAMILYTV_SDK_PATH:-}" ]]; then SWIFT_FLAGS+=(-sdk "$FAMILYTV_SDK_PATH"); fi
 xcrun swiftc "${SWIFT_FLAGS[@]}" -target arm64-apple-macos13.0 -O \
   macos/FamilyTV/Sources/*.swift -o "$APP/Contents/MacOS/FamilyTV" \
