@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Merge IPTV-CN categories and a maintained supplement into safe TVBox TXT."""
+"""Maintain TVBox TXT with core channels plus local, drama and regional extras."""
 
 import argparse
 from concurrent.futures import ThreadPoolExecutor
@@ -22,10 +22,61 @@ SOURCES = (
     "https://iptv-cn.github.io/IPTV/categories/" + quote("卫视") + ".m3u",
     "https://guovin.github.io/iptv-api/result.m3u",
 )
+LABELLED_OPTIONAL_SOURCE = "https://raw.githubusercontent.com/xiongjian83/TvBox/main/live.m3u"
+OPTIONAL_SOURCES = (
+    "https://raw.githubusercontent.com/iptv-org/iptv/master/streams/cn.m3u",
+    "https://iptv-org.github.io/iptv/countries/tw.m3u",
+    "https://iptv-org.github.io/iptv/countries/hk.m3u",
+    "https://iptv-org.github.io/iptv/countries/mo.m3u",
+    LABELLED_OPTIONAL_SOURCE,
+)
 CCTV = tuple("CCTV" + str(i) for i in range(1, 18))
-SATELLITE = ("江西卫视", "湖南卫视", "浙江卫视", "江苏卫视", "东方卫视", "广东卫视", "北京卫视", "深圳卫视")
-ORDER = CCTV[:5] + ("CCTV5+",) + CCTV[5:] + SATELLITE
-REQUIRED = CCTV + SATELLITE
+CORE_SATELLITE = ("江西卫视", "湖南卫视", "浙江卫视", "江苏卫视", "东方卫视", "广东卫视", "北京卫视", "深圳卫视")
+SATELLITE = CORE_SATELLITE + ("辽宁卫视", "吉林卫视", "黑龙江卫视", "新疆卫视", "山东卫视", "河南卫视",
+                              "四川卫视", "湖北卫视", "安徽卫视", "东南卫视")
+JIANGXI = ("江西都市", "江西经济生活", "江西影视", "江西公共农业", "江西少儿", "南昌新闻综合",
+           "赣州新闻综合", "赣州公共", "赣州教育", "萍乡新闻综合", "抚州公共")
+DRAMA = ("第一剧场", "风云剧场", "怀旧剧场", "都市剧场", "欢笑剧场", "湖南电视剧", "福建电视剧", "淘剧场")
+ANIMATION = ("金鹰卡通", "优漫卡通", "卡酷动画", "炫动卡通", "动漫秀场", "爱动漫")
+TAIWAN = ("台视", "华视", "TVBS亚洲")
+HONG_KONG = ("翡翠台", "凤凰香港", "凤凰中文")
+MACAO = ("澳视澳门", "澳门莲花")
+GROUPS = (("央视频道", CCTV[:5] + ("CCTV5+",) + CCTV[5:]), ("卫视频道", SATELLITE),
+          ("江西本地", JIANGXI), ("电视剧场", DRAMA), ("动漫少儿", ANIMATION),
+          ("台湾频道", TAIWAN), ("香港频道", HONG_KONG), ("澳门频道", MACAO))
+ORDER = tuple(name for _, names in GROUPS for name in names)
+REQUIRED = CCTV + CORE_SATELLITE
+CHANNEL_GROUP = {name: title for title, names in GROUPS for name in names}
+OPTIONAL_CHANNELS = set(ORDER) - set(REQUIRED) - {"CCTV5+"}
+
+# Exact aliases avoid treating a similarly named shopping/news channel as a
+# requested general channel. English names and IDs come from iptv-org metadata.
+ALIASES = {
+    "上海卫视": "东方卫视", "BTV北京卫视": "北京卫视", "福建卫视": "东南卫视",
+    "江西都市频道": "江西都市", "江西经济·生活": "江西经济生活", "江西公共·农业": "江西公共农业",
+    "江西公共": "江西公共农业", "江西家庭少儿": "江西少儿", "江西少儿频道": "江西少儿",
+    "赣州新闻": "赣州新闻综合", "哈哈炫动": "炫动卡通", "卡酷少儿": "卡酷动画",
+    "萍鄉新聞綜合": "萍乡新闻综合", "Pingxiang TV News Channel": "萍乡新闻综合",
+    "PingxiangTVNewsChannel.cn": "萍乡新闻综合",
+    "臺視": "台视", "台視": "台视", "台视主频": "台视", "華視": "华视",
+    "TVBS-ASIA": "TVBS亚洲", "鳳凰香港": "凤凰香港", "凤凰香港台": "凤凰香港",
+    "凤凰中文台": "凤凰中文", "鳳凰中文": "凤凰中文", "澳視澳門": "澳视澳门",
+    "澳视澳门台": "澳视澳门", "澳門蓮花": "澳门莲花", "澳门莲花台": "澳门莲花",
+    "Jiangxi City Channel": "江西都市", "JiangxiCityChannel.cn": "江西都市",
+    "Jiangxi Economy & Life Channel": "江西经济生活", "JiangxiEconomyLifeChannel.cn": "江西经济生活",
+    "Jiangxi Movie Channel": "江西影视", "JiangxiMovieChannel.cn": "江西影视",
+    "Jiangxi Public & Agriculture Channel": "江西公共农业", "JiangxiPublicAgricultureChannel.cn": "江西公共农业",
+    "Jiangxi Children's Channel": "江西少儿", "JiangxiChildrensChannel.cn": "江西少儿",
+    "Nanchang News & Generalist Channel": "南昌新闻综合", "NanchangNewsGeneralistChannel.cn": "南昌新闻综合",
+    "Golden Eagle Cartoon": "金鹰卡通", "You Man Cartoon Channel": "优漫卡通",
+    "TTV": "台视", "TTV.tw": "台视", "CTS": "华视", "CTS.tw": "华视",
+    "TVBS-Asia": "TVBS亚洲", "TVBSAsia.tw": "TVBS亚洲",
+    "Jade": "翡翠台", "Jade.hk": "翡翠台", "Phoenix Chinese Channel": "凤凰中文",
+    "PhoenixChineseChannel.hk": "凤凰中文", "TDM Ou Mun": "澳视澳门", "TDMOuMun.mo": "澳视澳门",
+    "Lotus TV": "澳门莲花", "LotusTV.mo": "澳门莲花",
+}
+ALIASES = {re.sub(r"\s+", "", unicodedata.normalize("NFKC", key)).upper(): value
+           for key, value in ALIASES.items()}
 BLOCKED = tuple(ipaddress.ip_network(net) for net in ("74.91.0.0/16", "107.150.0.0/16"))
 MAX_BYTES = 4 * 1024 * 1024
 USER_AGENT = "Mozilla/5.0 FamilyTV-PlaylistUpdater/1.0"
@@ -46,10 +97,16 @@ def channel_name(value):
         if not 1 <= number <= 17 or (match.group(2) and number != 5):
             return None
         return "CCTV" + str(number) + ("+" if match.group(2) else "")
-    for name in SATELLITE:
-        if value == name or value in (name + suffix for suffix in ("高清", "超清", "HD", "FHD", "4K")):
-            return name
-    return {"上海卫视": "东方卫视", "BTV北京卫视": "北京卫视"}.get(value)
+    # Strip only documented quality/availability markers, not arbitrary words.
+    while True:
+        clean = re.sub(r"(?:\(\d{3,4}[PI]\)|\[(?:GEO-BLOCKED|NOT24/7)\]|超高清|高清|超清|FHD|HD|4K)$", "", value)
+        if clean == value:
+            break
+        value = clean
+    value = value.split("@", 1)[0]
+    if value in CHANNEL_GROUP:
+        return value
+    return ALIASES.get(value)
 
 
 def valid_url(value):
@@ -100,7 +157,13 @@ def extinf(line):
     raise UpdateError("EXTINF is missing its display-name separator")
 
 
-def parse_m3u(text, label):
+def entry_channel(entry):
+    display, attributes = entry
+    return next((name for value in (display, attributes.get("tvg-name", ""), attributes.get("tvg-id", ""))
+                 if (name := channel_name(value))), None)
+
+
+def parse_m3u(text, label, allow_unselected=False):
     lines = [line.strip() for line in text.lstrip("\ufeff").splitlines() if line.strip()]
     if not lines or lines[0].split(maxsplit=1)[0] != "#EXTM3U":
         raise UpdateError(label + ": not an extended M3U playlist")
@@ -123,17 +186,62 @@ def parse_m3u(text, label):
         else:
             if pending is None:
                 raise UpdateError(label + ": stream URL without EXTINF")
-            display, attributes = pending
-            name = next((name for value in (display, attributes.get("tvg-name", ""), attributes.get("tvg-id", ""))
-                         if (name := channel_name(value))), None)
+            name = entry_channel(pending)
             if name is not None and not needs_headers:
                 records.append((name, line))
             pending = None
     if pending is not None:
         raise UpdateError(label + ": truncated final entry")
-    if not records:
+    if not records and not allow_unselected:
         raise UpdateError(label + ": no selected channels")
     return records
+
+
+def optional_playlist(text, label, strip_display_labels=False):
+    """Supplement new groups only, retaining the original core source priority."""
+    lines = [line.strip() for line in text.lstrip("\ufeff").splitlines() if line.strip()]
+    if not lines or lines[0].split(maxsplit=1)[0] != "#EXTM3U":
+        raise UpdateError(label + ": not an extended M3U playlist")
+    # Some large catalogues have empty entries for unrelated channels. Ignore
+    # those entries before parsing, but strictly validate every selected entry
+    # and preserve global/header settings so they cannot become broken bare URLs.
+    filtered = [lines[0]]
+    selected = False
+    first_entry = True
+    for line in lines[1:]:
+        if line.startswith("#EXTINF:"):
+            first_entry = False
+            selected = entry_channel(extinf(line)) in OPTIONAL_CHANNELS
+        if selected or first_entry:
+            if strip_display_labels and not line.startswith("#"):
+                # This source appends a TVBox display label, not request headers.
+                # Remove only its documented literal pattern; all other control
+                # syntax remains rejected by valid_url().
+                line = re.sub(r"\$LR•IPV[46]『线路\d+』$", "", line)
+            filtered.append(line)
+    records = parse_m3u("\n".join(filtered), label, allow_unselected=True)
+    if not records:
+        return None
+    return "#EXTM3U\n" + "".join("#EXTINF:-1," + name + "\n" + url + "\n" for name, url in records)
+
+
+def remote_playlists():
+    # Fail closed for the three original core upstreams. Extra regional sources
+    # may be unavailable without preventing a valid core update.
+    playlists = [(url, fetch(url)) for url in SOURCES]
+    for label, text in playlists:
+        parse_m3u(text, label)
+    failures = []
+    for url in OPTIONAL_SOURCES:
+        try:
+            selected = optional_playlist(fetch(url, timeout=15, attempts=2), url,
+                                         strip_display_labels=url == LABELLED_OPTIONAL_SOURCE)
+            if selected is not None:
+                playlists.append((url, selected))
+        except (OSError, UnicodeError, UpdateError, ValueError) as exc:
+            failures.append(url)
+            print("Optional upstream skipped: " + url + ": " + str(exc), file=sys.stderr)
+    return playlists, failures
 
 
 def fetch(url, timeout=20, attempts=3):
@@ -220,12 +328,15 @@ def reachable_channels(channels, timeout):
     urls = list(dict.fromkeys(url for lines in channels.values() for url in lines))
     with ThreadPoolExecutor(max_workers=8) as pool:
         results = dict(zip(urls, pool.map(lambda url: probe(url, timeout), urls)))
-    return {name: [url for url in urls if results[url]] for name, urls in channels.items()}
+    reachable = {name: [url for url in lines if results[url]] for name, lines in channels.items()}
+    return {name: lines for name, lines in reachable.items() if lines}
 
 
 def render(channels):
     lines = []
-    for title, names in (("央视频道", ORDER[:-len(SATELLITE)]), ("卫视频道", SATELLITE)):
+    for title, names in GROUPS:
+        if not any(channels.get(name) for name in names):
+            continue
         lines.append(title + ",#genre#")
         for name in names:
             # Repeated same-name rows are merged into backup URLs by Android LiveParser.
@@ -243,12 +354,12 @@ def validate_output(text):
         if not separator or not name:
             raise UpdateError("invalid TXT row")
         if url == "#genre#":
-            if name not in ("央视频道", "卫视频道"):
+            if name not in {title for title, _ in GROUPS}:
                 raise UpdateError("invalid TXT group")
             group = name
             continue
         key = valid_url(url)
-        expected_group = "卫视频道" if name in SATELLITE else "央视频道"
+        expected_group = CHANNEL_GROUP.get(name)
         if (name not in ORDER or key is None or not channel_url_agrees(name, url)
                 or group != expected_group or (name, key) in seen):
             raise UpdateError("invalid, duplicate or ungrouped TXT stream")
@@ -288,7 +399,10 @@ def update(output, playlists, check_streams=False, probe_timeout=8, dry_run=Fals
     return {"changed": changed, "written": changed and not dry_run, "probe_enabled": check_streams,
             "channel_count": len(channels), "line_count": sum(map(len, channels.values())),
             "skipped_invalid_or_duplicate": skipped,
-            "backups": {name: len(urls) - 1 for name, urls in channels.items() if len(urls) > 1}}
+            "backups": {name: len(urls) - 1 for name, urls in channels.items() if len(urls) > 1},
+            "missing_optional_channels": [name for name in ORDER if name in OPTIONAL_CHANNELS and not channels.get(name)],
+            "groups": {title: sum(bool(channels.get(name)) for name in names) for title, names in GROUPS
+                       if any(channels.get(name) for name in names)}}
 
 
 def main(argv=None):
@@ -302,10 +416,13 @@ def main(argv=None):
     if args.probe_timeout <= 0:
         parser.error("probe timeout must be positive")
     try:
-        # All downloads must succeed before any change is made.
-        playlists = ([(str(path), path.read_text(encoding="utf-8-sig")) for path in args.input]
-                     if args.input else [(url, fetch(url)) for url in SOURCES])
+        if args.input:
+            playlists = [(str(path), path.read_text(encoding="utf-8-sig")) for path in args.input]
+            failures = []
+        else:
+            playlists, failures = remote_playlists()
         result = update(args.output, playlists, args.probe, args.probe_timeout, args.dry_run)
+        result["optional_upstream_failures"] = failures
         print(json.dumps(result, ensure_ascii=False, indent=2))
         return 0
     except (OSError, UnicodeError, UpdateError, ValueError) as exc:

@@ -53,6 +53,98 @@ class UpdateTests(unittest.TestCase):
         text = '\ufeff#EXTM3U\r\n#EXTINF:-1 tvg-logo="https://example.org/a,b.png" tvg-name="CCTV2 财经",别名\r\n#comment\r\nhttps://example.org/two.m3u8\r\n'
         self.assertEqual(updater.parse_m3u(text, "test"), [("CCTV2", "https://example.org/two.m3u8")])
 
+    def test_expanded_groups_keep_backups_and_core_order(self):
+        extras = ["江西都市", "赣州新闻", "风云剧场", "金鹰卡通", "辽宁卫视", "新疆卫视",
+                  "臺視", "Jade (1080p)", "TDM Ou Mun (720p)"]
+        sources = complete_playlists() + [("extras", playlist(extras, "extras.example.org"))]
+        sources.append(("backup", playlist(["江西都市高清"], "backup.example.org")))
+        result = updater.update(self.output, sources)
+        text = self.output.read_text()
+        self.assertEqual(result["channel_count"], 34)
+        self.assertEqual(result["backups"]["江西都市"], 1)
+        channels = updater.validate_output(text)
+        self.assertIn("赣州新闻综合", channels)
+        self.assertEqual(result["groups"]["江西本地"], 2)
+        for title in ("江西本地", "电视剧场", "动漫少儿", "台湾频道", "香港频道", "澳门频道"):
+            self.assertIn(title + ",#genre#\n", text)
+        self.assertLess(text.index("CCTV17,"), text.index("江西卫视,"))
+
+    def test_regional_aliases_preserve_distinct_programmes(self):
+        aliases = {"Jiangxi City Channel": "江西都市", "JiangxiMovieChannel.cn@SD": "江西影视",
+                   "Nanchang News & Generalist Channel": "南昌新闻综合", "臺視": "台视",
+                   "CTS (1080p)": "华视", "TVBS-Asia (1080p)": "TVBS亚洲",
+                   "Jade (1080p)": "翡翠台", "TDM Ou Mun (720p) [Not 24/7]": "澳视澳门",
+                   "Lotus TV (720p)": "澳门莲花", "福建卫视": "东南卫视"}
+        for raw, expected in aliases.items():
+            self.assertEqual(updater.channel_name(raw), expected, raw)
+        for raw in ("CTS News [Geo-blocked]", "TVBS News", "台视新闻", "江西都市购物", "CCTV4K"):
+            self.assertIsNone(updater.channel_name(raw), raw)
+
+    def test_failed_optional_stream_is_omitted_without_empty_group_or_inflated_count(self):
+        sources = complete_playlists() + [("extras", playlist(["澳视澳门"], "failed.example.org"))]
+        with patch.object(updater, "probe", side_effect=lambda url, timeout: "failed.example.org" not in url):
+            with contextlib.redirect_stderr(io.StringIO()):
+                result = updater.update(self.output, sources, check_streams=True)
+        self.assertEqual(result["channel_count"], 25)
+        self.assertIn("澳视澳门", result["missing_optional_channels"])
+        self.assertNotIn("澳门频道,#genre#", self.output.read_text())
+
+    def test_optional_source_does_not_inject_or_reorder_core_lines(self):
+        text = playlist(["CCTV1", "江西卫视", "江西都市"], "extra.example.org")
+        selected = updater.optional_playlist(text, "extra")
+        self.assertEqual(updater.parse_m3u(selected, "extra"), [("江西都市", "https://extra.example.org/2.m3u8")])
+        self.assertIsNone(updater.optional_playlist(playlist(["unselected channel"]), "unselected"))
+
+    def test_unselected_empty_entry_does_not_discard_valid_local_channel(self):
+        text = '#EXTM3U\n#EXTINF:-1,Unselected offline channel\n#EXTINF:-1,赣州公共\nhttps://example.org/local.m3u8\n'
+        selected = updater.optional_playlist(text, "extras")
+        self.assertEqual(updater.parse_m3u(selected, "extras"), [("赣州公共", "https://example.org/local.m3u8")])
+        with self.assertRaises(updater.UpdateError):
+            updater.optional_playlist(text.replace('Unselected offline channel', '江西都市'), "selected empty entry")
+
+    def test_optional_filter_preserves_required_headers_and_rejects_global_settings(self):
+        text = '#EXTM3U\n#EXTINF:-1,赣州公共\n#EXTVLCOPT:http-referrer=https://example.org\nhttps://example.org/a.m3u8\n'
+        self.assertIsNone(updater.optional_playlist(text, "header-dependent"))
+        with self.assertRaises(updater.UpdateError):
+            updater.optional_playlist('#EXTM3U\n#EXTVLCOPT:http-user-agent=special\n' + text.split('\n',1)[1], "global headers")
+
+    def test_only_known_tvbox_display_labels_are_removed_from_opt_in_source(self):
+        text = '#EXTM3U\n#EXTINF:-1,江西都市\nhttps://example.org/a.m3u8?token=A%2FB$LR•IPV4『线路2』\n'
+        labelled = updater.optional_playlist(text, "labelled", strip_display_labels=True)
+        channels, _ = updater.collect([("labelled", labelled)])
+        self.assertEqual(channels["江西都市"], ["https://example.org/a.m3u8?token=A%2FB"])
+        original = updater.optional_playlist(text, "ordinary M3U")
+        self.assertEqual(updater.collect([("ordinary", original)])[0], {})
+        for suffix in ('|User-Agent=special', '$arbitrary', '#https://another.example/a'):
+            selected = updater.optional_playlist(text.replace('$LR•IPV4『线路2』', suffix), "unsupported", strip_display_labels=True)
+            self.assertEqual(updater.collect([("unsupported", selected)])[0], {})
+
+    def test_optional_download_or_format_failure_does_not_block_core_update(self):
+        core = [item[1] for item in complete_playlists()] + [playlist(["CCTV8"], "supplement.example.org")]
+        for extra in (updater.UpdateError("optional download failed"), "<html>error</html>",
+                      "#EXTM3U\n#EXTINF:-1,江西都市\n"):
+            with self.subTest(extra=extra):
+                values = core + [extra]
+                with patch.object(updater, "OPTIONAL_SOURCES", ("https://optional.example.org/list.m3u",)):
+                    with patch.object(updater, "fetch", side_effect=values):
+                        with contextlib.redirect_stderr(io.StringIO()), contextlib.redirect_stdout(io.StringIO()):
+                            self.assertEqual(updater.main(["--output", str(self.output)]), 0)
+                self.assertEqual(len(updater.validate_output(self.output.read_text())), 25)
+
+    def test_extra_channels_never_mask_missing_required_channel(self):
+        sources = complete_playlists()
+        sources[0] = ("cctv", playlist([name for name in updater.CCTV if name != "CCTV8"]))
+        sources.append(("extras", playlist(list(updater.OPTIONAL_CHANNELS), "extras.example.org")))
+        with self.assertRaisesRegex(updater.UpdateError, "CCTV8"):
+            updater.update(self.output, sources)
+        self.assertEqual(self.output.read_bytes(), self.original)
+
+    def test_wrong_group_for_new_channel_is_rejected(self):
+        channels, _ = updater.collect(complete_playlists())
+        text = updater.render(channels) + "江西本地,#genre#\n风云剧场,https://example.org/a.m3u8\n"
+        with self.assertRaises(updater.UpdateError):
+            updater.validate_output(text)
+
     def test_numeric_sort_and_no_uhd_mislabel(self):
         for name in ("CCTV4K 超高清", "CCTV8K", "CCTV123", "CCTV18", "CCTV6+"):
             self.assertIsNone(updater.channel_name(name), name)
