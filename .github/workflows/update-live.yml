@@ -54,6 +54,7 @@ jobs:
         id: generate
         run: python3 scripts/update-live.py --probe
       - name: Commit only a changed, validated playlist
+        id: publish
         shell: bash
         run: |
           set -euo pipefail
@@ -67,7 +68,32 @@ jobs:
               commit -m 'chore: refresh live playlist from maintained subscriptions'
           # Never force-push: if main moves, this run fails and the next run regenerates.
           git push origin HEAD:main
+          echo 'changed=true' >> "$GITHUB_OUTPUT"
           echo 'Validated playlist updated. jsDelivr address is unchanged.' >> "$GITHUB_STEP_SUMMARY"
+      - name: Refresh jsDelivr after publishing
+        if: steps.publish.outputs.changed == 'true'
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import json
+          import os
+          import urllib.request
+
+          path = '/gh/oops1996/-tvbox-live@main/live.txt'
+          try:
+              with urllib.request.urlopen('https://purge.jsdelivr.net' + path, timeout=20) as response:
+                  result = json.load(response)
+              entry = result.get('paths', {}).get(path, {})
+              providers = entry.get('providers', {})
+              if result.get('status') != 'finished' or entry.get('throttled') or not providers or not all(providers.values()):
+                  raise ValueError('CDN did not confirm all cache refreshes')
+              summary = 'jsDelivr cache refreshed for the existing subscription URL.'
+          except Exception as exc:
+              print(f'::warning::Playlist was published, but CDN cache refresh failed ({type(exc).__name__}).')
+              summary = 'Playlist was published; jsDelivr cache refresh failed. The previous CDN cache may remain until it expires.'
+          with open(os.environ['GITHUB_STEP_SUMMARY'], 'a', encoding='utf-8') as output:
+              output.write(summary + '\n')
+          PY
       - name: Report upstream or validation failure
-        if: failure()
+        if: failure() && steps.publish.outputs.changed != 'true'
         run: echo 'Update failed. No replacement playlist was pushed; check missing channels, download errors or stream probe results in the logs.' >> "$GITHUB_STEP_SUMMARY"
