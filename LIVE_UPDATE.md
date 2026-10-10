@@ -10,13 +10,26 @@
 - https://iptv-cn.github.io/IPTV/categories/卫视.m3u
 - https://guovin.github.io/iptv-api/result.m3u （[Guovin/iptv-api](https://github.com/Guovin/iptv-api) 当前官方 Pages 输出）
 
-新增本地、电视剧、动漫及地区频道还使用 [iptv-org](https://github.com/iptv-org/iptv) 的公开分类文件作为可选补充：
+新增本地、电影、电视剧、动漫及地区频道还使用 [iptv-org](https://github.com/iptv-org/iptv) 的公开分类文件作为可选补充：
 
 - https://raw.githubusercontent.com/iptv-org/iptv/master/streams/cn.m3u
 - https://iptv-org.github.io/iptv/countries/tw.m3u
 - https://iptv-org.github.io/iptv/countries/hk.m3u
 - https://iptv-org.github.io/iptv/countries/mo.m3u
 - https://raw.githubusercontent.com/xiongjian83/TvBox/main/live.m3u （[公开仓库](https://github.com/xiongjian83/TvBox)，补充江西本地等候选线路）
+- https://iptv-org.github.io/iptv/categories/movies.m3u
+- https://iptv-org.github.io/iptv/categories/series.m3u
+- https://raw.githubusercontent.com/iptv-org/iptv/master/streams/kr.m3u
+- https://raw.githubusercontent.com/iptv-org/iptv/master/streams/jp.m3u
+- https://raw.githubusercontent.com/iptv-org/iptv/master/streams/us_xumo.m3u
+- https://raw.githubusercontent.com/iptv-org/iptv/master/streams/us_roku.m3u
+
+另读取两个 TVBox TXT 作为**江西历史备用候选**，仅转换江西频道，不能注入或改写核心频道：
+
+- https://raw.githubusercontent.com/oceanechy/tansuotv/main/jxtv.txt
+- https://raw.githubusercontent.com/oops1996/-tvbox-live/66ef0813ff3ae9f2a91f7be22ba58b40e8a0ad65/live.txt （本仓库换成公网源前的固定历史版本）
+
+历史线路不代表仍在维护或跨运营商可用，也不直接复制进当前 `live.txt`；每次和其他候选一样复测，通过才纳入。
 
 这些补充文件仅为新增频道提供线路，不混入原有 25 个核心频道，保留原先的线路来源优先级。
 
@@ -28,8 +41,14 @@
 
 | 分组 | 候选频道 |
 | --- | --- |
-| 江西本地 | 江西都市、经济生活、影视、公共农业、少儿，南昌新闻综合、赣州新闻综合/公共/教育、萍乡新闻综合、抚州公共 |
+| 江西本地 | 江西二套都市、三套经济生活、五套公共农业、六套少儿、七套新闻、八套移动，江西教育，以及南昌新闻综合、赣州新闻综合/公共/教育、萍乡新闻综合、抚州公共 |
 | 电视剧场 | 第一剧场、风云剧场、怀旧剧场、都市剧场、欢笑剧场、湖南电视剧、福建电视剧、淘剧场 |
+| 电影频道 | CHC家庭影院、CHC动作电影、动作电影、天映频道、天映经典、纬来电影、龙祥电影、淘电影、NewTV动作电影、黑莓电影、超级电影、精品电影、高清电影、MovieSphere、Hallmark Movies & More、NEW K.MOVIES、Universal Monsters |
+| 美剧频道 | CSI美国/迈阿密/纽约、海滩救护队、行尸走肉宇宙、星际迷航美国版、Murder She Wrote、Universal Action、Universal Crime |
+| 英剧频道 | 神秘博士经典、骇人命案事件簿 |
+| 韩剧频道 | MBC Drama、MBC Drama USA、Pluto TV K-Drama |
+| 海外剧场 | 海外剧场、亚洲剧台 |
+| 日本综合台 | 日本电视台、富士电视台、朝日电视台、日本TBS、东京电视台；包含电视剧等节目，不是全天专播日剧的频道 |
 | 动漫少儿 | 金鹰卡通、优漫卡通、卡酷动画、炫动卡通、动漫秀场、爱动漫 |
 | 更多卫视 | 辽宁、吉林、黑龙江、新疆、山东、河南、四川、湖北、安徽、东南卫视 |
 | 台湾频道 | 台视、华视、TVBS 亚洲 |
@@ -37,6 +56,12 @@
 | 澳门频道 | 澳视澳门、澳门莲花 |
 
 采用有限的中文/繁体/英文名称及台标 ID 对照，不把华视新闻、TVBS 新闻等不同节目合并成综合频道。可选大订阅中未选频道的空条目不会影响选定频道，但选定条目缺 URL、错误结构或需要额外请求设置时不会转成可播地址。
+
+电影频道不与央视 CCTV6 合并。CHC动作电影、NewTV动作电影和上游标作“动作电影”的未确认同名线路分别处理；只有明确的 CHC 台标 ID 才把通用名称“动作电影”认作 CHC。CSI 等海外剧也不会把不同名称的西语/拉美版本混入已选美国版本。海外频道不保证中文配音或中文字幕。
+
+江西频道对照依据[江西台当前官方直播页](https://www.jxntv.cn/live/)：二套都市、三套经济生活、五套公共农业、六套少儿、七套新闻、八套移动。旧列表的“江西8教育”实际是另一个教育频道，改为“江西教育”，不冒充八套。发布时江西二至八套的现役候选保留套数，便于用户辨认；教育频道单列。
+
+**江西四套影视·旅游已停播**：[江西台官方公告（2025-07-18）](https://www.jxgdw.cn/2025/0718/9749303.shtml)说明节目于 2025-07-21 24 时，即 7 月 22 日零时起正式停播。脚本排除其旧线路，即使某个旧节点仍返回 HLS，也不能把循环录播或停播画面当作恢复直播。日志单独列出 `retired_channels`。官网直播采用临时鉴权 URL；目前未把会过期的网页链接当作长期订阅地址，也未绕过鉴权。
 
 ## 更新规则
 
@@ -51,6 +76,7 @@
 - 相同内容不重复写入或提交。更新只提交 `live.txt`，不会触发 APK/macOS 的构建。
 - 新列表成功推送后，工作流调用 jsDelivr 的缓存刷新接口。刷新失败只显示警告，已发布的文件保留，订阅地址等待 CDN 缓存自然过期。
 - 日志列出缺失的新增频道、跳过的可选订阅、各分组的实际频道数。未响应的新增频道不计入统计，不写入失效占位地址。
+- 已确认停播的频道从抓取和发布范围排除，不与暂时缺少可响应线路的频道混淆。江西历史 TXT 仅作为末位补充，选中条目缺 URL 会跳过该可选上游，核心失败保护不变。
 
 ## 定时与手动运行
 

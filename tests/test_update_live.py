@@ -125,7 +125,8 @@ class UpdateTests(unittest.TestCase):
                       "#EXTM3U\n#EXTINF:-1,江西都市\n"):
             with self.subTest(extra=extra):
                 values = core + [extra]
-                with patch.object(updater, "OPTIONAL_SOURCES", ("https://optional.example.org/list.m3u",)):
+                with patch.object(updater, "OPTIONAL_SOURCES", ("https://optional.example.org/list.m3u",)), \
+                        patch.object(updater, "OPTIONAL_TXT_SOURCES", ()):
                     with patch.object(updater, "fetch", side_effect=values):
                         with contextlib.redirect_stderr(io.StringIO()), contextlib.redirect_stdout(io.StringIO()):
                             self.assertEqual(updater.main(["--output", str(self.output)]), 0)
@@ -144,6 +145,85 @@ class UpdateTests(unittest.TestCase):
         text = updater.render(channels) + "江西本地,#genre#\n风云剧场,https://example.org/a.m3u8\n"
         with self.assertRaises(updater.UpdateError):
             updater.validate_output(text)
+
+    def test_movie_and_overseas_series_groups_round_trip(self):
+        extras = ["CHC家庭影院", "Celestial Movies (576i)", "MovieSphere (1080p)",
+                  "CSI: Miami", "Doctor Who Classic (1080p)", "MBC Drama USA (1080p)",
+                  "Asian Drama (1080p)", "JOCX-DTV", "海外剧场", "Murder, She Wrote (1080p)"]
+        result = updater.update(self.output, complete_playlists() + [("extras", playlist(extras))])
+        channels = updater.validate_output(self.output.read_text())
+        self.assertEqual(result["channel_count"], 35)
+        self.assertEqual(result["groups"]["电影频道"], 3)
+        for title in ("美剧频道", "英剧频道", "韩剧频道", "海外剧场", "日本综合台"):
+            self.assertIn(title + ",#genre#", self.output.read_text())
+        self.assertIn("富士电视台", channels)
+        self.assertIn("Murder She Wrote", channels)
+        for raw in ("CSI: Miami BR", "CSI: Miami LatAm", "CSI (Sweden)", "Star Trek LatAm",
+                    "StarTrek.us@BR", "MovieSphere AU", "MovieSphere.us@AU", "NHK World-Japan"):
+            self.assertIsNone(updater.channel_name(raw), raw)
+
+    def test_chc_action_metadata_does_not_merge_unrelated_newtv_channel(self):
+        text = '#EXTM3U\n#EXTINF:-1 tvg-id="CHCAction.cn@SD",动作电影 (1080p)\nhttps://example.org/chc.m3u8\n'
+        text += '#EXTINF:-1 tvg-id="1",动作电影\nhttps://example.org/other.m3u8\n'
+        text += '#EXTINF:-1,NewTV动作电影\nhttps://example.org/newtv.m3u8\n'
+        channels, _ = updater.collect([("movies", text)])
+        self.assertEqual(channels["CHC动作电影"], ["https://example.org/chc.m3u8"])
+        self.assertEqual(channels["动作电影"], ["https://example.org/other.m3u8"])
+        self.assertEqual(channels["NewTV动作电影"], ["https://example.org/newtv.m3u8"])
+
+    def test_legacy_jiangxi_txt_is_scoped_and_education_is_not_eighth_channel(self):
+        text = '\ufeff江西本地,#genre#\r\n江西2都市,https://example.org/two.m3u8\r\n'
+        text += '江西7新闻,https://example.org/seven.m3u8\n江西8教育,https://example.org/education.m3u8\n'
+        text += '江西8移动,https://example.org/eight.m3u8\nCCTV1,https://evil.example.org/core.m3u8\n'
+        text += '电影频道,#genre#\nCHC家庭影院,https://example.org/movie.m3u8\n'
+        selected = updater.optional_jiangxi_txt(text, "legacy")
+        channels, _ = updater.collect([("legacy", selected)])
+        self.assertEqual(set(channels), {"江西都市", "江西新闻", "江西教育", "江西移动"})
+        result = updater.update(self.output, complete_playlists() + [("legacy", selected)])
+        self.assertEqual(result["groups"]["江西本地"], 4)
+        rendered = self.output.read_text()
+        self.assertIn("江西2都市,", rendered)
+        self.assertIn("江西8移动,", rendered)
+        self.assertIn("江西教育,", rendered)
+        self.assertNotIn("江西8教育,", rendered)
+        for raw, expected in [("江西二套", "江西都市"), ("江西四套", "江西影视"),
+                              ("江西七套", "江西新闻"), ("江西八套", "江西移动")]:
+            self.assertEqual(updater.channel_name(raw), expected)
+
+    def test_malformed_selected_txt_is_rejected_without_touching_existing_list(self):
+        for text in ("<html>error</html>", "江西二套", "江西3经济生活,", "江西少儿,\n"):
+            with self.assertRaises(updater.UpdateError):
+                updater.optional_jiangxi_txt(text, "bad")
+        self.assertIsNone(updater.optional_jiangxi_txt("CCTV1,\nunrelated entry", "unselected"))
+        self.assertEqual(self.output.read_bytes(), self.original)
+
+    def test_optional_legacy_failure_does_not_block_core_and_valid_fallback(self):
+        core = [item[1] for item in complete_playlists()] + [playlist(["CCTV8"])]
+        for bad in (updater.UpdateError("legacy download failed"), "<html>error</html>", "江西都市,"):
+            with self.subTest(bad=bad), patch.object(updater, "OPTIONAL_SOURCES", ()), \
+                    patch.object(updater, "OPTIONAL_TXT_SOURCES", ("https://example.org/bad.txt", "https://example.org/good.txt")), \
+                    patch.object(updater, "fetch", side_effect=core + [bad, "江西二套,https://example.org/local.m3u8"]):
+                with contextlib.redirect_stderr(io.StringIO()), contextlib.redirect_stdout(io.StringIO()):
+                    self.assertEqual(updater.main(["--output", str(self.output)]), 0)
+            self.assertEqual(len(updater.validate_output(self.output.read_text())), 26)
+
+    def test_legacy_fallback_follows_current_jiangxi_source_and_deduplicates(self):
+        current = playlist(["江西都市"], "current.example.org")
+        legacy = updater.optional_jiangxi_txt("江西2都市,https://current.example.org/0.m3u8\n"
+                                             "江西二套,https://backup.example.org/local.m3u8", "legacy")
+        channels, skipped = updater.collect([("current", current), ("legacy", legacy)])
+        self.assertEqual(channels["江西都市"], ["https://current.example.org/0.m3u8", "https://backup.example.org/local.m3u8"])
+        self.assertEqual(skipped, 1)
+
+    def test_officially_retired_jiangxi_four_is_not_published_even_if_url_responds(self):
+        sources = complete_playlists() + [("stale", playlist(["江西4影视旅游"]))]
+        with patch.object(updater, "probe", return_value=True), contextlib.redirect_stderr(io.StringIO()):
+            result = updater.update(self.output, sources, check_streams=True)
+        self.assertEqual(result["channel_count"], 25)
+        self.assertEqual(result["retired_channels"], ["江西影视"])
+        self.assertNotIn("江西影视", result["missing_optional_channels"])
+        self.assertNotIn("江西4影视旅游,", self.output.read_text())
+        self.assertIsNone(updater.optional_jiangxi_txt("江西4影视旅游,https://example.org/stale.m3u8", "retired"))
 
     def test_numeric_sort_and_no_uhd_mislabel(self):
         for name in ("CCTV4K 超高清", "CCTV8K", "CCTV123", "CCTV18", "CCTV6+"):

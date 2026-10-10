@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Maintain TVBox TXT with core channels plus local, drama and regional extras."""
+"""Maintain TVBox TXT with core channels plus local, film and series extras."""
 
 import argparse
 from concurrent.futures import ThreadPoolExecutor
@@ -29,25 +29,56 @@ OPTIONAL_SOURCES = (
     "https://iptv-org.github.io/iptv/countries/hk.m3u",
     "https://iptv-org.github.io/iptv/countries/mo.m3u",
     LABELLED_OPTIONAL_SOURCE,
+    "https://iptv-org.github.io/iptv/categories/movies.m3u",
+    "https://iptv-org.github.io/iptv/categories/series.m3u",
+    "https://raw.githubusercontent.com/iptv-org/iptv/master/streams/kr.m3u",
+    "https://raw.githubusercontent.com/iptv-org/iptv/master/streams/jp.m3u",
+    "https://raw.githubusercontent.com/iptv-org/iptv/master/streams/us_xumo.m3u",
+    "https://raw.githubusercontent.com/iptv-org/iptv/master/streams/us_roku.m3u",
+)
+OPTIONAL_TXT_SOURCES = (
+    "https://raw.githubusercontent.com/oceanechy/tansuotv/main/jxtv.txt",
+    # Immutable record of the owner's previous Jiangxi Mobile playlist.
+    "https://raw.githubusercontent.com/oops1996/-tvbox-live/66ef0813ff3ae9f2a91f7be22ba58b40e8a0ad65/live.txt",
 )
 CCTV = tuple("CCTV" + str(i) for i in range(1, 18))
 CORE_SATELLITE = ("江西卫视", "湖南卫视", "浙江卫视", "江苏卫视", "东方卫视", "广东卫视", "北京卫视", "深圳卫视")
 SATELLITE = CORE_SATELLITE + ("辽宁卫视", "吉林卫视", "黑龙江卫视", "新疆卫视", "山东卫视", "河南卫视",
                               "四川卫视", "湖北卫视", "安徽卫视", "东南卫视")
-JIANGXI = ("江西都市", "江西经济生活", "江西影视", "江西公共农业", "江西少儿", "南昌新闻综合",
+JIANGXI = ("江西都市", "江西经济生活", "江西影视", "江西公共农业", "江西少儿", "江西新闻", "江西移动", "江西教育", "南昌新闻综合",
            "赣州新闻综合", "赣州公共", "赣州教育", "萍乡新闻综合", "抚州公共")
 DRAMA = ("第一剧场", "风云剧场", "怀旧剧场", "都市剧场", "欢笑剧场", "湖南电视剧", "福建电视剧", "淘剧场")
+MOVIES = ("CHC家庭影院", "CHC动作电影", "动作电影", "天映频道", "天映经典", "纬来电影", "龙祥电影",
+          "淘电影", "NewTV动作电影", "黑莓电影", "超级电影", "精品电影", "高清电影",
+          "MovieSphere", "Hallmark Movies & More", "NEW K.MOVIES", "Universal Monsters")
+US_SERIES = ("CSI美国", "CSI迈阿密", "CSI纽约", "海滩救护队", "行尸走肉宇宙", "星际迷航美国版",
+             "Murder She Wrote", "Universal Action", "Universal Crime")
+UK_SERIES = ("神秘博士经典", "骇人命案事件簿")
+KOREAN_SERIES = ("MBC Drama", "MBC Drama USA", "Pluto TV K-Drama")
+OVERSEAS_SERIES = ("海外剧场", "亚洲剧台")
+# These are general broadcasters carrying Japanese dramas, not dedicated
+# round-the-clock drama channels. Keep that distinction visible in the group.
+JAPAN = ("日本电视台", "富士电视台", "朝日电视台", "日本TBS", "东京电视台")
 ANIMATION = ("金鹰卡通", "优漫卡通", "卡酷动画", "炫动卡通", "动漫秀场", "爱动漫")
 TAIWAN = ("台视", "华视", "TVBS亚洲")
 HONG_KONG = ("翡翠台", "凤凰香港", "凤凰中文")
 MACAO = ("澳视澳门", "澳门莲花")
 GROUPS = (("央视频道", CCTV[:5] + ("CCTV5+",) + CCTV[5:]), ("卫视频道", SATELLITE),
-          ("江西本地", JIANGXI), ("电视剧场", DRAMA), ("动漫少儿", ANIMATION),
+          ("江西本地", JIANGXI), ("电视剧场", DRAMA), ("电影频道", MOVIES),
+          ("美剧频道", US_SERIES), ("英剧频道", UK_SERIES), ("韩剧频道", KOREAN_SERIES),
+          ("海外剧场", OVERSEAS_SERIES), ("日本综合台", JAPAN), ("动漫少儿", ANIMATION),
           ("台湾频道", TAIWAN), ("香港频道", HONG_KONG), ("澳门频道", MACAO))
 ORDER = tuple(name for _, names in GROUPS for name in names)
 REQUIRED = CCTV + CORE_SATELLITE
 CHANNEL_GROUP = {name: title for title, names in GROUPS for name in names}
-OPTIONAL_CHANNELS = set(ORDER) - set(REQUIRED) - {"CCTV5+"}
+# The broadcaster's 2025-07-18 notice confirms this channel ended on July 22.
+# https://www.jxgdw.cn/2025/0718/9749303.shtml
+RETIRED_CHANNELS = {"江西影视"}
+OPTIONAL_CHANNELS = set(ORDER) - set(REQUIRED) - {"CCTV5+"} - RETIRED_CHANNELS
+DISPLAY_NAMES = {"江西都市": "江西2都市", "江西经济生活": "江西3经济生活", "江西影视": "江西4影视旅游",
+                 "江西公共农业": "江西5公共农业", "江西少儿": "江西6少儿", "江西新闻": "江西7新闻",
+                 "江西移动": "江西8移动"}
+DISPLAY_CHANNELS = {display: name for name, display in DISPLAY_NAMES.items()}
 
 # Exact aliases avoid treating a similarly named shopping/news channel as a
 # requested general channel. English names and IDs come from iptv-org metadata.
@@ -74,7 +105,33 @@ ALIASES = {
     "Jade": "翡翠台", "Jade.hk": "翡翠台", "Phoenix Chinese Channel": "凤凰中文",
     "PhoenixChineseChannel.hk": "凤凰中文", "TDM Ou Mun": "澳视澳门", "TDMOuMun.mo": "澳视澳门",
     "Lotus TV": "澳门莲花", "LotusTV.mo": "澳门莲花",
+    "江西2都市": "江西都市", "江西二套": "江西都市", "江西2套": "江西都市",
+    "江西3经济生活": "江西经济生活", "江西三套": "江西经济生活", "江西3套": "江西经济生活",
+    "江西4影视旅游": "江西影视", "江西四套": "江西影视", "江西4套": "江西影视",
+    "江西影视旅游": "江西影视", "江西影视·旅游": "江西影视",
+    "江西5公共农业": "江西公共农业", "江西五套": "江西公共农业", "江西5套": "江西公共农业",
+    "江西6少儿": "江西少儿", "江西六套": "江西少儿", "江西6套": "江西少儿",
+    "江西7新闻": "江西新闻", "江西七套": "江西新闻", "江西7套": "江西新闻",
+    "江西8移动": "江西移动", "江西八套": "江西移动", "江西8套": "江西移动",
+    # The old list mislabeled a separate education channel as Jiangxi 8.
+    "江西8教育": "江西教育", "Jiangxi News Channel": "江西新闻", "JiangxiNewsChannel.cn": "江西新闻",
+    "Jiangxi Mobile Channel": "江西移动", "JiangxiMobileChannel.cn": "江西移动",
+    "CHC Action": "CHC动作电影", "CHCAction.cn": "CHC动作电影",
+    "家庭影院": "CHC家庭影院", "CHC Home Theater": "CHC家庭影院", "CHCHomeTheater.cn": "CHC家庭影院",
+    "Celestial Movies": "天映频道", "CelestialMovies.hk": "天映频道", "天映電影": "天映频道",
+    "纬来电影台": "纬来电影", "緯來電影": "纬来电影", "龍祥電影": "龙祥电影",
+    "NewTV海外剧场": "海外剧场", "Asian Drama": "亚洲剧台", "AsianDrama.hk": "亚洲剧台",
+    "CSI (United States)": "CSI美国", "CSI: Miami": "CSI迈阿密", "CSI: NY": "CSI纽约",
+    "Baywatch": "海滩救护队", "The Walking Dead Universe": "行尸走肉宇宙", "Star Trek US": "星际迷航美国版",
+    "Doctor Who Classic": "神秘博士经典", "Midsomer Murders": "骇人命案事件簿",
+    "Murder, She Wrote": "Murder She Wrote",
+    "JOAX-DTV": "日本电视台", "JOAXDTV.jp": "日本电视台",
+    "JOCX-DTV": "富士电视台", "JOCXDTV.jp": "富士电视台",
+    "JOEX-DTV": "朝日电视台", "JOEXDTV.jp": "朝日电视台",
+    "JORX-DTV": "日本TBS", "JORXDTV.jp": "日本TBS",
+    "JOTX-DTV": "东京电视台", "JOTXDTV.jp": "东京电视台",
 }
+ALIASES = {**{name: name for name in ORDER}, **ALIASES}
 ALIASES = {re.sub(r"\s+", "", unicodedata.normalize("NFKC", key)).upper(): value
            for key, value in ALIASES.items()}
 BLOCKED = tuple(ipaddress.ip_network(net) for net in ("74.91.0.0/16", "107.150.0.0/16"))
@@ -159,6 +216,10 @@ def extinf(line):
 
 def entry_channel(entry):
     display, attributes = entry
+    # A generic Action Movies label also appears on an unrelated NewTV feed.
+    # Only explicit CHC metadata identifies that label as the CHC channel.
+    if channel_name(display) == "动作电影" and channel_name(attributes.get("tvg-id", "")) == "CHC动作电影":
+        return "CHC动作电影"
     return next((name for value in (display, attributes.get("tvg-name", ""), attributes.get("tvg-id", ""))
                  if (name := channel_name(value))), None)
 
@@ -241,7 +302,39 @@ def remote_playlists():
         except (OSError, UnicodeError, UpdateError, ValueError) as exc:
             failures.append(url)
             print("Optional upstream skipped: " + url + ": " + str(exc), file=sys.stderr)
+    for url in OPTIONAL_TXT_SOURCES:
+        try:
+            selected = optional_jiangxi_txt(fetch(url, timeout=15, attempts=2), url)
+            if selected is not None:
+                playlists.append((url, selected))
+        except (OSError, UnicodeError, UpdateError, ValueError) as exc:
+            failures.append(url)
+            print("Optional upstream skipped: " + url + ": " + str(exc), file=sys.stderr)
     return playlists, failures
+
+
+def optional_jiangxi_txt(text, label):
+    """Convert only Jiangxi names from legacy TVBox TXT, never core channels."""
+    if text.lstrip("\ufeff \r\n").startswith("<"):
+        raise UpdateError(label + ": not a TVBox TXT playlist")
+    records = []
+    for number, raw in enumerate(text.lstrip("\ufeff").splitlines(), 1):
+        line = raw.strip()
+        if not line or line.startswith("#"):
+            continue
+        display, separator, url = line.partition(",")
+        name = channel_name(display)
+        if name not in JIANGXI or name in RETIRED_CHANNELS:
+            continue
+        if not separator or not url.strip():
+            raise UpdateError(label + ": selected TXT entry has no URL at line " + str(number))
+        if url.strip() == "#genre#":
+            continue
+        # valid_url() later rejects unsupported TVBox headers/control syntax.
+        records.append((name, url.strip()))
+    if not records:
+        return None
+    return "#EXTM3U\n" + "".join("#EXTINF:-1," + name + "\n" + url + "\n" for name, url in records)
 
 
 def fetch(url, timeout=20, attempts=3):
@@ -282,7 +375,7 @@ def collect(playlists):
     for label, text in playlists:
         for name, url in parse_m3u(text, label):
             key = valid_url(url)
-            if key is None or not channel_url_agrees(name, url) or (name, key) in seen:
+            if name in RETIRED_CHANNELS or key is None or not channel_url_agrees(name, url) or (name, key) in seen:
                 skipped += 1
                 continue
             seen.add((name, key))
@@ -341,7 +434,7 @@ def render(channels):
         for name in names:
             # Repeated same-name rows are merged into backup URLs by Android LiveParser.
             # Unlike URL1#URL2, these rows also remain readable by the existing macOS app.
-            lines.extend(name + "," + url for url in channels.get(name, []))
+            lines.extend(DISPLAY_NAMES.get(name, name) + "," + url for url in channels.get(name, []))
     return "\n".join(lines) + "\n"
 
 
@@ -358,9 +451,10 @@ def validate_output(text):
                 raise UpdateError("invalid TXT group")
             group = name
             continue
+        name = DISPLAY_CHANNELS.get(name, name)
         key = valid_url(url)
         expected_group = CHANNEL_GROUP.get(name)
-        if (name not in ORDER or key is None or not channel_url_agrees(name, url)
+        if (name not in ORDER or name in RETIRED_CHANNELS or key is None or not channel_url_agrees(name, url)
                 or group != expected_group or (name, key) in seen):
             raise UpdateError("invalid, duplicate or ungrouped TXT stream")
         seen.add((name, key))
@@ -401,6 +495,7 @@ def update(output, playlists, check_streams=False, probe_timeout=8, dry_run=Fals
             "skipped_invalid_or_duplicate": skipped,
             "backups": {name: len(urls) - 1 for name, urls in channels.items() if len(urls) > 1},
             "missing_optional_channels": [name for name in ORDER if name in OPTIONAL_CHANNELS and not channels.get(name)],
+            "retired_channels": [name for name in ORDER if name in RETIRED_CHANNELS],
             "groups": {title: sum(bool(channels.get(name)) for name in names) for title, names in GROUPS
                        if any(channels.get(name) for name in names)}}
 
