@@ -25,8 +25,8 @@ def customize(src, repo):
     replace(src / "app/src/main/java/com/fongmi/android/tv/player/exo/ExoUtil.java",
             "MimeTypes.APPLICATION_OCTET", '"application/octet-stream"')
     gradle = src / "app/build.gradle"
-    replace(gradle, '        versionCode 1', '        versionCode 4')
-    replace(gradle, 'versionName "1.0.0 家庭电视"', 'versionName "1.1.0 家庭电视"')
+    replace(gradle, '        versionCode 1', '        versionCode 5')
+    replace(gradle, 'versionName "1.0.0 家庭电视"', 'versionName "1.1.1 家庭电视"')
     replace(gradle, '    buildTypes {', '''    signingConfigs {
         family {
             if (System.getenv("FAMILY_TV_KEYSTORE_PATH")) {
@@ -117,8 +117,12 @@ def customize(src, repo):
     replace(home, '        mBinding.progressLayout.showProgress();', '        mBinding.progressLayout.showContent();')
     replace(home, '        Updater.create().start(this);', '        com.fongmi.android.tv.Setting.putUpdate(false);')
     replace(home, '        initConfig();', '        setFunc();\n        resetHome();\n        initConfig();')
-    replace(home, '        VodConfig.get().init().load(getCallback());', f'        if (Config.vod().isEmpty() || FamilySourcesActivity.isDisabled(Config.vod())) Config.find("{CONFIG_URL}", "家庭电视", 0).update();\n        VodConfig.get().init().load(getCallback());')
-    replace(home, '        LiveConfig.get().init().load();', '        if (Config.live().isEmpty()) Config.create(1, "https://cdn.jsdelivr.net/gh/oops1996/-tvbox-live@main/live.txt", "家庭直播").update();\n        LiveConfig.get().init().load();')
+    replace(home, '        VodConfig.get().init().load(getCallback());', f'        if (Config.vod().isEmpty() || FamilySourcesActivity.isDisabled(Config.vod())) Config.find("{CONFIG_URL}", "家庭电视", 0).update();\n        VodConfig.get().init();')
+    replace(home, '        LiveConfig.get().init().load();', '        if (Config.live().isEmpty()) Config.create(1, "https://cdn.jsdelivr.net/gh/oops1996/-tvbox-live@main/live.txt", "家庭直播").update();\n        LiveConfig.get().init();')
+    # init() only reads local state. Initialize every dependency before dispatching
+    # VOD parsing: a fast response can include both lives and wallpaper fields.
+    # Wallpaper remains hidden by BaseActivity.customWall(); no image is loaded here.
+    replace(home, '        WallConfig.get().init();', '        WallConfig.get().init();\n        VodConfig.get().load(getCallback());\n        LiveConfig.get().load();')
     replace(home, '        App.post(() -> mBinding.title.setFocusable(true), 500);', '        mBinding.title.setFocusable(true);')
     replace(home, '        items.add(Func.create(R.string.home_vod));', '        items.add(Func.create(R.string.home_vod));\n        items.add(Func.create(R.string.family_media));')
     replace(home, '            case R.string.home_live:', '            case R.string.family_media:\n                startActivity(new Intent(this, FamilyMediaActivity.class));\n                break;\n            case R.string.home_live:')
@@ -179,22 +183,29 @@ def customize(src, repo):
         }''')
     live = src / "app/src/main/java/com/fongmi/android/tv/api/config/LiveConfig.java"
     replace(live, '        LiveActivity.start(App.get());', '        // 家庭电视 never auto-opens live TV.')
+    # Source management can query synchronization before a HomeActivity exists.
+    # Use the upstream's null-safe local configuration accessor in both paths.
+    for name in ('LiveConfig', 'WallConfig'):
+        config_file = src / f"app/src/main/java/com/fongmi/android/tv/api/config/{name}.java"
+        replace(config_file,
+                '        return sync || TextUtils.isEmpty(config.getUrl()) || url.equals(config.getUrl());',
+                '        String current = getConfig().getUrl();\n        return sync || TextUtils.isEmpty(current) || TextUtils.equals(url, current);')
     settings = src / "app/src/leanback/java/com/fongmi/android/tv/ui/activity/SettingActivity.java"
     replace(settings, '        mBinding.vodHistory.setOnClickListener(this::onVodHistory);', '        mBinding.vodHistory.setOnClickListener(v -> startActivity(new Intent(this, FamilySourcesActivity.class)));\n        mBinding.familyMedia.setOnClickListener(v -> startActivity(new Intent(this, FamilyMediaActivity.class)));')
     replace(settings, '        Updater.create().force().start(this);', '        Notify.show("家庭电视定制版：请从自己的构建记录手动安装更新");')
     layout = res / "layout/activity_setting.xml"
     anchor = '        android:padding="24dp">'
-    replace(layout, anchor, anchor + '\n\n' + """        <com.google.android.material.button.MaterialButton
+    replace(layout, anchor, anchor + '\n\n' + """        <TextView
             android:id="@+id/familyMedia"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:focusable="true"
+            style="@style/Family.SettingAction"
+            android:nextFocusUp="@id/familyStartup"
+            android:nextFocusDown="@id/familySources"
             android:text="OpenList / WebDAV · 我的媒体" />
-        <com.google.android.material.button.MaterialButton
+        <TextView
             android:id="@+id/familySources"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:focusable="true"
+            style="@style/Family.SettingAction"
+            android:nextFocusUp="@id/familyMedia"
+            android:nextFocusDown="@id/vod"
             android:text="接口管理（本机保存）" />""")
     replace(settings, '        mBinding.vod.setOnClickListener(this::onVod);', '        mBinding.vod.setOnClickListener(this::onVod);\n        mBinding.familySources.setOnClickListener(v -> startActivity(new Intent(this, FamilySourcesActivity.class)));')
     # Shared PairingDialog references a binding supplied only in the mobile flavor.

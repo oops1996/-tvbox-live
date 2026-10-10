@@ -10,6 +10,7 @@ git -C "$SRC" remote add origin "$UPSTREAM"
 git -C "$SRC" fetch --depth 1 origin "$UPSTREAM_SHA"
 git -C "$SRC" checkout --detach FETCH_HEAD
 python3 "$CUSTOM_DIR/scripts/customize-tv.py" "$SRC" --repo "$CUSTOM_DIR"
+python3 "$CUSTOM_DIR/scripts/test-tv-regressions.py" "$SRC"
 python3 "$CUSTOM_DIR/scripts/prepare-media3.py" "$SRC"
 cd "$SRC"
 # 上游把 FreeBox 配对弹窗布局只放在 mobile flavor，但对应 Java 类位于 main，leanback 构建会缺少 ViewBinding。

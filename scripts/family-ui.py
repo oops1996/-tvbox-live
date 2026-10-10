@@ -6,8 +6,7 @@ def apply(src, repo, replace):
                         'import com.fongmi.android.tv.ui.presenter.HistoryPresenter;\nimport com.fongmi.android.tv.ui.presenter.FamilyHistoryPresenter;\nimport com.fongmi.android.tv.ui.presenter.FamilyHeaderPresenter;\nimport com.fongmi.android.tv.ui.presenter.FamilyVodPresenter;\nimport com.fongmi.android.tv.family.FamilyStartup;\nimport android.widget.TextView;')
     replace(home, 'mClock = Clock.create(mBinding.clock);', 'mClock = Clock.create(mBinding.clock).format("HH:mm");')
     replace(home, '                mBinding.toolbar.setVisibility(position == 0 ? View.VISIBLE : View.GONE);', '                // Keep navigation and source controls visible while browsing.')
-    replace(home, '        VodConfig.get().init().load(getCallback());', '        setRefreshing(true);\n        VodConfig.get().init().load(getCallback());')
-    replace(home, '        WallConfig.get().init();', '        // The black theme does not load a wallpaper.')
+    replace(home, '        VodConfig.get().load(getCallback());', '        setRefreshing(true);\n        VodConfig.get().load(getCallback());')
     replace(home, '        mAdapter.add(new ListRow(mFuncAdapter = new ArrayObjectAdapter(new FuncPresenter(this))));', '')
     replace(home, 'new HeaderPresenter()', 'new FamilyHeaderPresenter()')
     replace(home, 'setVerticalSpacing(ResUtil.dp2px(16))', 'setVerticalSpacing(ResUtil.dp2px(6))')
@@ -189,9 +188,9 @@ def apply(src, repo, replace):
     replace(settings, '        mBinding.familySources.setOnClickListener', '        mBinding.familyStartup.setOnClickListener(v -> startActivity(new Intent(this, FamilyStartupActivity.class)));\n        mBinding.familySources.setOnClickListener')
     layout = src / 'app/src/leanback/res/layout/activity_setting.xml'
     replace(layout, '        android:padding="24dp">', '''        android:padding="24dp">
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/familyStartup" android:layout_width="match_parent" android:layout_height="wrap_content"
-            android:focusable="true" android:text="开机自动启动 · 权限与桌面设置" />''')
+        <TextView android:id="@+id/familyStartup" style="@style/Family.SettingAction"
+            android:nextFocusDown="@id/familyMedia"
+            android:text="开机自动启动 · 权限与桌面设置" />''')
     vod = src / 'app/src/leanback/java/com/fongmi/android/tv/ui/activity/VodActivity.java'
     replace(vod, '        setPager();', '''        setPager();
         String initial = getIntent().getStringExtra("family_type");
