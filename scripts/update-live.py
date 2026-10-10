@@ -153,6 +153,20 @@ def fetch(url, timeout=20, attempts=3):
             time.sleep(attempt + 1)
 
 
+def channel_url_agrees(name, url):
+    # The supplement has mislabeled CCTV4K and CCTV5+ entries. Reject explicit
+    # conflicts rather than guessing the programme identity from a valid URL.
+    value = url.lower()
+    marker = r"(?:^|[/=?&_-])cctv[-_]?"
+    if name == "CCTV4" and re.search(marker + r"4k(?:hd|[/._?&=-]|$)", value):
+        return False
+    if name == "CCTV8" and re.search(marker + r"8k(?:hd|[/._?&=-]|$)", value):
+        return False
+    if name == "CCTV5" and re.search(marker + r"5(?:p|plus)(?:hd|[/._?&=-]|$)", value):
+        return False
+    return True
+
+
 def collect(playlists):
     channels = {}
     seen = set()
@@ -160,7 +174,7 @@ def collect(playlists):
     for label, text in playlists:
         for name, url in parse_m3u(text, label):
             key = valid_url(url)
-            if key is None or (name, key) in seen:
+            if key is None or not channel_url_agrees(name, url) or (name, key) in seen:
                 skipped += 1
                 continue
             seen.add((name, key))
@@ -180,9 +194,19 @@ def probe(url, timeout=8):
         with urlopen(Request(url, headers={"User-Agent": USER_AGENT}), timeout=timeout) as response:
             if response.status not in (200, 206):
                 return False
+            if valid_url(getattr(response, "geturl", lambda: url)()) is None:
+                return False
             data = response.read(4096)
+            if data.lstrip(b"\xef\xbb\xbf \r\n").startswith(b"#EXTM3U"):
+                # ENDLIST may be at the end of a long recorded-programme playlist.
+                limit = 512 * 1024
+                data += response.read(limit + 1 - len(data))
+                if len(data) > limit:
+                    return False
         manifest = data.decode("utf-8-sig", errors="replace").strip()
         if manifest.startswith("#EXTM3U"):
+            if "#EXT-X-ENDLIST" in manifest or "#EXT-X-PLAYLIST-TYPE:VOD" in manifest:
+                return False
             # A header alone or an HTTP 200 error page is not a usable HLS response.
             has_stream_tag = "#EXTINF:" in manifest or "#EXT-X-STREAM-INF:" in manifest
             has_uri = any(line.strip() and not line.strip().startswith("#") for line in manifest.splitlines()[1:])
@@ -225,7 +249,8 @@ def validate_output(text):
             continue
         key = valid_url(url)
         expected_group = "卫视频道" if name in SATELLITE else "央视频道"
-        if name not in ORDER or key is None or group != expected_group or (name, key) in seen:
+        if (name not in ORDER or key is None or not channel_url_agrees(name, url)
+                or group != expected_group or (name, key) in seen):
             raise UpdateError("invalid, duplicate or ungrouped TXT stream")
         seen.add((name, key))
         channels.setdefault(name, []).append(url)

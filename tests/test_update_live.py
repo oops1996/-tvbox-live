@@ -83,6 +83,18 @@ class UpdateTests(unittest.TestCase):
         self.assertIsNotNone(updater.valid_url("https://example.org/a?token=A%2FB&x=2"))
         self.assertIsNotNone(updater.valid_url("https://[2606:4700:4700::1111]/a"))
 
+    def test_supplement_mislabeled_uhd_and_sports_plus_are_excluded(self):
+        text = playlist(["CCTV4", "CCTV5"])
+        text += '#EXTINF:-1,CCTV4\nhttp://example.org/gslb/live.m3u8?id=cctv4k\n'
+        text += '#EXTINF:-1,CCTV5\nhttp://example.org/live/cctv5p.m3u8\n'
+        text += '#EXTINF:-1,CCTV5\nhttp://example.org/live/cctv5plus.m3u8\n'
+        text += '#EXTINF:-1,CCTV5+\nhttp://example.org/live/cctv5p.m3u8\n'
+        channels, skipped = updater.collect([("mislabeled", text)])
+        self.assertEqual(skipped, 3)
+        self.assertEqual(len(channels["CCTV4"]), 1)
+        self.assertEqual(len(channels["CCTV5"]), 1)
+        self.assertEqual(len(channels["CCTV5+"]), 1)
+
     def test_missing_cctv8_never_replaces_existing_file(self):
         sources = complete_playlists()
         sources[0] = ("cctv", playlist(["CCTV" + str(i) for i in range(1, 18) if i != 8]))
@@ -189,6 +201,21 @@ class UpdateTests(unittest.TestCase):
             response.status = 200
             with patch.object(updater, "urlopen", return_value=response):
                 self.assertEqual(updater.probe("https://example.org/a"), expected)
+
+    def test_probe_rejects_recorded_programme_endlist_beyond_first_chunk(self):
+        data = b"#EXTM3U\n" + b"#EXTINF:6,\nsegment.ts\n" * 400 + b"#EXT-X-ENDLIST\n"
+        self.assertGreater(len(data), 4096)
+        response = io.BytesIO(data)
+        response.status = 200
+        with patch.object(updater, "urlopen", return_value=response):
+            self.assertFalse(updater.probe("https://example.org/vod.m3u8"))
+
+    def test_probe_rejects_redirect_to_known_bad_network(self):
+        response = io.BytesIO(b"#EXTM3U\n#EXTINF:6,\nsegment.ts\n")
+        response.status = 200
+        response.geturl = lambda: "http://74.91.26.218/live/cctv1.m3u8"
+        with patch.object(updater, "urlopen", return_value=response):
+            self.assertFalse(updater.probe("https://example.org/redirect.m3u8"))
 
     def test_invalid_or_duplicate_output_is_rejected(self):
         channels, _ = updater.collect(complete_playlists())
