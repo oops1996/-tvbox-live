@@ -24,11 +24,8 @@ CCTV9,http://198.204.228.26/live/cctv9hd.m3u8
 CCTV9,http://63.141.230.178:82/gslb/zbdq5.m3u8?id=cctv9hd
 CCTV9,https://xykt-fix.github.io/Y77.m3u8
 CCTV10,http://63.141.230.178:82/gslb/zbdq5.m3u8?id=cctv10hd
-CCTV10,http://38.75.136.137:98/gslb/dsdqbv/cctv10hd.m3u8?auth=test20251009
-CCTV11,http://38.75.136.137:98/gslb/dsdqbv/cctv11hd.m3u8?auth=test20251009
 CCTV11,http://63.141.230.178:82/gslb/zbdq5.m3u8?id=cctv11hd
 CCTV11,https://xykt-fix.github.io/play/a02b/index.m3u8
-CCTV12,http://38.75.136.137:98/gslb/dsdqbv/cctv12hd.m3u8?auth=test20251009
 CCTV12,http://63.141.230.178:82/gslb/zbdq5.m3u8?id=cctv12hd
 CCTV13,https://event.pull.hebtv.com/jishi/cp1.m3u8
 CCTV14,http://38.75.136.137:98/gslb/dsdqbv/cctv14hd.m3u8?auth=test20251009
@@ -41,7 +38,6 @@ CCTV15,http://204.12.221.218:8181/3m1080p/cctv15.m3u8
 CCTV15,https://xykt-fix.github.io/play/a02e/index.m3u8
 CCTV16,http://38.75.136.137:98/gslb/dsdqbv/cctv16hd.m3u8?auth=test20251009
 CCTV16,http://173.208.234.146/live/cctv16.m3u8
-CCTV17,http://38.75.136.137:98/gslb/dsdqbv/cctv17hd.m3u8?auth=test20251009
 CCTV17,http://63.141.230.178:82/gslb/zbdq5.m3u8?id=cctv17hd
 卫视频道,#genre#
 江西卫视,http://38.75.136.137:98/gslb/dsdqpub/jxwshd.m3u8?auth=testpub
@@ -52,6 +48,7 @@ CCTV17,http://63.141.230.178:82/gslb/zbdq5.m3u8?id=cctv17hd
 湖南卫视,http://63.141.230.178:82/gslb/zbdq5.m3u8?id=hnwshd
 浙江卫视,http://38.75.136.137:98/gslb/dsdqpub/zjwshd.m3u8?auth=testpub
 浙江卫视,http://63.141.230.178:82/gslb/zbdq5.m3u8?id=zjwshd
+江苏卫视,http://38.75.136.137:98/gslb/dsdqpub/jswshd.m3u8?auth=testpub
 江苏卫视,http://63.141.230.178:82/gslb/zbdq5.m3u8?id=jswshd
 江苏卫视,http://204.12.221.218:8181/3m1080p/jsws.m3u8
 江苏卫视,http://38.75.136.137:98/gslb/dsdqbv/jswshd.m3u8?auth=test20251009
@@ -87,8 +84,11 @@ CCTV17,http://63.141.230.178:82/gslb/zbdq5.m3u8?id=cctv17hd
 东南卫视,http://63.141.230.178:82/gslb/zbdq5.m3u8?id=dnwshd
 东南卫视,http://live.zohi.tv/video/s10001-fztv-3/index.m3u8
 电视剧场,#genre#
+第一剧场,http://38.75.136.137:98/gslb/dsdqpub/dyjc.m3u8?auth=testpub
 第一剧场,http://63.141.230.178:82/gslb/zbdq5.m3u8?id=dyjc
+风云剧场,http://38.75.136.137:98/gslb/dsdqpub/fyjc.m3u8?auth=testpub
 风云剧场,http://63.141.230.178:82/gslb/zbdq5.m3u8?id=fyjc
+风云剧场,http://173.208.212.130:8181/720p/fyjc.m3u8
 怀旧剧场,http://63.141.230.178:82/gslb/zbdq5.m3u8?id=hjjc
 怀旧剧场,http://38.75.136.137:98/gslb/dsdqpub/hjjc.m3u8?auth=testpub
 都市剧场,https://satellitepull.cnr.cn/live/wxcqxwgb/playlist.m3u8
@@ -104,8 +104,6 @@ CHC家庭影院,http://198.204.228.26/live/chcjt.m3u8
 CHC动作电影,http://192.151.150.154/live/chcdz.m3u8
 CHC动作电影,http://38.75.136.137:98/gslb/dsdqpub/chcdz.m3u8?auth=testpub
 纬来电影,http://31.43.191.125:8080/restream/restream/34852
-龙祥电影,http://31.43.191.125:8080/vip6821768502490/6c17bae55394/34825
-龙祥电影,http://31.43.191.125:8080/restream/restream/34825
 黑莓电影,https://epg.pw/stream/ffcb6572863f0745a7369fbd9d901f1dfd0ab8fab8bad8bebb4e01c90b303c47.m3u8
 MovieSphere,https://amg00353-lionsgatestudio-moviesphere-xumo-zh5u0.amagi.tv/playlist.m3u8
 Hallmark Movies & More,https://dbrb49pjoymg4.cloudfront.net/v1/master/3fec3e5cac39a52b2132f9c66c83dae043dc17d4/prod_default_xumo-ams-aws/master.m3u8?ads.xumo_channelId=99991709
@@ -128,7 +126,6 @@ MBC Drama USA,https://shd-gcp-live.edgenextcdn.net/live/bitmovin-mbc-drama-usa/e
 海外剧场,#genre#
 亚洲剧台,http://103.172.187.30:12000/stream/mytv/null-11/master.m3u8
 日本综合台,#genre#
-日本电视台,https://ntv5.mov3.co/hls/ntv.m3u8
 富士电视台,https://fujitv4.mov3.co/hls/fujitv.m3u8
 朝日电视台,https://tvasahi.mov3.co/hls/tvasahi.m3u8
 日本TBS,https://tbs5.mov3.co/hls/tbs.m3u8
