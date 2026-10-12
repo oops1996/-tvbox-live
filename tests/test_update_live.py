@@ -119,6 +119,39 @@ class UpdateTests(unittest.TestCase):
             selected = updater.optional_playlist(text.replace('$LR•IPV4『线路2』', suffix), "unsupported", strip_display_labels=True)
             self.assertEqual(updater.collect([("unsupported", selected)])[0], {})
 
+    def test_jiangxi_mobile_m3u_adds_only_local_candidates_and_keeps_urls_safe(self):
+        source = ('#EXTM3U\n'
+                  '#EXTINF:-1,CCTV4\nhttps://mobile.example.org/cctv4.m3u8\n'
+                  '#EXTINF:-1,江西卫视\nhttps://mobile.example.org/jxws.m3u8\n'
+                  '#EXTINF:-1,南昌新闻综合\nhttps://mobile.example.org/nc.m3u8?fmt=ts2hls$江西移动\n'
+                  '#EXTINF:-1,南昌都市\nhttps://mobile.example.org/city.m3u8$江西移动\n'
+                  '#EXTINF:-1,南昌资讯\nhttps://mobile.example.org/info.m3u8\n'
+                  '#EXTINF:-1,江西经济\nhttps://mobile.example.org/econ.m3u8\n'
+                  '#EXTINF:-1,南昌公共频道\nhttps://mobile.example.org/public.m3u8\n'
+                  '#EXTINF:-1,江西少儿\nhttps://mobile.example.org/unsafe.m3u8$User-Agent=secret\n')
+        selected = updater.optional_playlist(source, "regional", strip_jiangxi_mobile_label=True)
+        channels, _ = updater.collect([("regional", selected)])
+        self.assertEqual(set(channels), {"南昌新闻综合", "南昌都市", "南昌资讯",
+                                          "南昌公共", "江西经济生活"})
+        self.assertEqual(channels["南昌新闻综合"],
+                         ["https://mobile.example.org/nc.m3u8?fmt=ts2hls"])
+        self.assertNotIn("CCTV4", channels)
+        self.assertNotIn("江西卫视", channels)
+        self.assertNotIn("江西少儿", channels)
+        unmodified = updater.optional_playlist(source, "other-source")
+        unmodified_channels, _ = updater.collect([("other-source", unmodified)])
+        self.assertNotIn("南昌新闻综合", unmodified_channels)
+        self.assertIn("南昌资讯", unmodified_channels)
+
+    def test_jiangxi_mobile_optional_lines_cannot_override_core_or_retired_channel(self):
+        text = ('#EXTM3U\n'
+                '#EXTINF:-1,CCTV5\nhttps://mobile.example.org/override.m3u8\n'
+                '#EXTINF:-1,江西4影视旅游\nhttps://mobile.example.org/stale.m3u8\n'
+                '#EXTINF:-1,江西公共\nhttps://mobile.example.org/local.m3u8\n')
+        selected = updater.optional_playlist(text, "regional", strip_jiangxi_mobile_label=True)
+        channels, _ = updater.collect([("regional", selected)])
+        self.assertEqual(channels, {"江西公共农业": ["https://mobile.example.org/local.m3u8"]})
+
     def test_optional_download_or_format_failure_does_not_block_core_update(self):
         core = [item[1] for item in complete_playlists()] + [playlist(["CCTV8"], "supplement.example.org")]
         for extra in (updater.UpdateError("optional download failed"), "<html>error</html>",

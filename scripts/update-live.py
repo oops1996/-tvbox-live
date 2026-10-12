@@ -23,12 +23,16 @@ SOURCES = (
     "https://guovin.github.io/iptv-api/result.m3u",
 )
 LABELLED_OPTIONAL_SOURCE = "https://raw.githubusercontent.com/xiongjian83/TvBox/main/live.m3u"
+# Regional source updated in 2026; its "$江西移动" suffix is a display label,
+# not an HTTP parameter. These are candidates, not cross-ISP guarantees.
+JIANGXI_MOBILE_OPTIONAL_SOURCE = "https://raw.githubusercontent.com/daymissed/tv/main/tv.m3u"
 OPTIONAL_SOURCES = (
     "https://raw.githubusercontent.com/iptv-org/iptv/master/streams/cn.m3u",
     "https://iptv-org.github.io/iptv/countries/tw.m3u",
     "https://iptv-org.github.io/iptv/countries/hk.m3u",
     "https://iptv-org.github.io/iptv/countries/mo.m3u",
     LABELLED_OPTIONAL_SOURCE,
+    JIANGXI_MOBILE_OPTIONAL_SOURCE,
     "https://iptv-org.github.io/iptv/categories/movies.m3u",
     "https://iptv-org.github.io/iptv/categories/series.m3u",
     "https://raw.githubusercontent.com/iptv-org/iptv/master/streams/kr.m3u",
@@ -45,7 +49,7 @@ CCTV = tuple("CCTV" + str(i) for i in range(1, 18))
 CORE_SATELLITE = ("江西卫视", "湖南卫视", "浙江卫视", "江苏卫视", "东方卫视", "广东卫视", "北京卫视", "深圳卫视")
 SATELLITE = CORE_SATELLITE + ("辽宁卫视", "吉林卫视", "黑龙江卫视", "新疆卫视", "山东卫视", "河南卫视",
                               "四川卫视", "湖北卫视", "安徽卫视", "东南卫视")
-JIANGXI = ("江西都市", "江西经济生活", "江西影视", "江西公共农业", "江西少儿", "江西新闻", "江西移动", "江西教育", "南昌新闻综合",
+JIANGXI = ("江西都市", "江西经济生活", "江西影视", "江西公共农业", "江西少儿", "江西新闻", "江西移动", "江西教育", "南昌新闻综合", "南昌都市", "南昌资讯", "南昌公共",
            "赣州新闻综合", "赣州公共", "赣州教育", "萍乡新闻综合", "抚州公共")
 DRAMA = ("第一剧场", "风云剧场", "怀旧剧场", "都市剧场", "欢笑剧场", "湖南电视剧", "福建电视剧", "淘剧场")
 MOVIES = ("CHC家庭影院", "CHC动作电影", "动作电影", "天映频道", "天映经典", "纬来电影", "龙祥电影",
@@ -84,7 +88,9 @@ DISPLAY_CHANNELS = {display: name for name, display in DISPLAY_NAMES.items()}
 # requested general channel. English names and IDs come from iptv-org metadata.
 ALIASES = {
     "上海卫视": "东方卫视", "BTV北京卫视": "北京卫视", "福建卫视": "东南卫视",
-    "江西都市频道": "江西都市", "江西经济·生活": "江西经济生活", "江西公共·农业": "江西公共农业",
+    "江西都市频道": "江西都市", "江西经济·生活": "江西经济生活", "江西经济": "江西经济生活",
+    "南昌都市频道": "南昌都市", "南昌资讯频道": "南昌资讯", "南昌资讯政法": "南昌资讯",
+    "南昌公共频道": "南昌公共", "江西公共·农业": "江西公共农业",
     "江西公共": "江西公共农业", "江西家庭少儿": "江西少儿", "江西少儿频道": "江西少儿",
     "赣州新闻": "赣州新闻综合", "哈哈炫动": "炫动卡通", "卡酷少儿": "卡酷动画",
     "萍鄉新聞綜合": "萍乡新闻综合", "Pingxiang TV News Channel": "萍乡新闻综合",
@@ -258,7 +264,7 @@ def parse_m3u(text, label, allow_unselected=False):
     return records
 
 
-def optional_playlist(text, label, strip_display_labels=False):
+def optional_playlist(text, label, strip_display_labels=False, strip_jiangxi_mobile_label=False):
     """Supplement new groups only, retaining the original core source priority."""
     lines = [line.strip() for line in text.lstrip("\ufeff").splitlines() if line.strip()]
     if not lines or lines[0].split(maxsplit=1)[0] != "#EXTM3U":
@@ -279,6 +285,10 @@ def optional_playlist(text, label, strip_display_labels=False):
                 # Remove only its documented literal pattern; all other control
                 # syntax remains rejected by valid_url().
                 line = re.sub(r"\$LR•IPV[46]『线路\d+』$", "", line)
+            if strip_jiangxi_mobile_label and not line.startswith("#"):
+                # Only this known source uses the trailing mobile-network label.
+                # Do not erase arbitrary `$...` control syntax or signed queries.
+                line = re.sub(r"\$江西移动$", "", line)
             filtered.append(line)
     records = parse_m3u("\n".join(filtered), label, allow_unselected=True)
     if not records:
@@ -296,7 +306,8 @@ def remote_playlists():
     for url in OPTIONAL_SOURCES:
         try:
             selected = optional_playlist(fetch(url, timeout=15, attempts=2), url,
-                                         strip_display_labels=url == LABELLED_OPTIONAL_SOURCE)
+                                         strip_display_labels=url == LABELLED_OPTIONAL_SOURCE,
+                                         strip_jiangxi_mobile_label=url == JIANGXI_MOBILE_OPTIONAL_SOURCE)
             if selected is not None:
                 playlists.append((url, selected))
         except (OSError, UnicodeError, UpdateError, ValueError) as exc:

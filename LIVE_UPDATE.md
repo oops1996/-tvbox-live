@@ -17,6 +17,7 @@
 - https://iptv-org.github.io/iptv/countries/hk.m3u
 - https://iptv-org.github.io/iptv/countries/mo.m3u
 - https://raw.githubusercontent.com/xiongjian83/TvBox/main/live.m3u （[公开仓库](https://github.com/xiongjian83/TvBox)，补充江西本地等候选线路）
+- https://raw.githubusercontent.com/daymissed/tv/main/tv.m3u （[江西移动来源及2026年更新记录](https://github.com/daymissed/tv)，仅补充非核心频道；运营商限制需实际检查）
 - https://iptv-org.github.io/iptv/categories/movies.m3u
 - https://iptv-org.github.io/iptv/categories/series.m3u
 - https://raw.githubusercontent.com/iptv-org/iptv/master/streams/kr.m3u
@@ -33,7 +34,45 @@
 
 这些补充文件仅为新增频道提供线路，不混入原有 25 个核心频道，保留原先的线路来源优先级。
 
-最后一个订阅包含 TVBox 的线路显示标签，仅对该订阅移除末尾明确的 `$LR•IPV4/6『线路数字』` 标签；查询参数和请求设置不改写。其余不支持的控制字符、协议或额外 header/DRM 依赖继续排除。
+`xiongjian83` 订阅包含 TVBox 的线路显示标签，仅对该订阅移除末尾明确的 `$LR•IPV4/6『线路数字』` 标签。`daymissed/tv` 部分线路包含末尾的 `$江西移动` 显示标签，仅对这一已知订阅移除该准确后缀；绝不通用删除 `# 自动维护直播源
+
+直播订阅地址保持不变：
+
+`https://cdn.jsdelivr.net/gh/oops1996/-tvbox-live@main/live.txt`
+
+转换脚本仅使用 Python 标准库，默认读取以下两个 IPTV-CN 分类订阅，再合并一个经仓库所有者确认的补充上游：
+
+- https://iptv-cn.github.io/IPTV/categories/cctv.m3u
+- https://iptv-cn.github.io/IPTV/categories/卫视.m3u
+- https://guovin.github.io/iptv-api/result.m3u （[Guovin/iptv-api](https://github.com/Guovin/iptv-api) 当前官方 Pages 输出）
+
+新增本地、电影、电视剧、动漫及地区频道还使用 [iptv-org](https://github.com/iptv-org/iptv) 的公开分类文件作为可选补充：
+
+- https://raw.githubusercontent.com/iptv-org/iptv/master/streams/cn.m3u
+- https://iptv-org.github.io/iptv/countries/tw.m3u
+- https://iptv-org.github.io/iptv/countries/hk.m3u
+- https://iptv-org.github.io/iptv/countries/mo.m3u
+- https://raw.githubusercontent.com/xiongjian83/TvBox/main/live.m3u （[公开仓库](https://github.com/xiongjian83/TvBox)，补充江西本地等候选线路）
+- https://raw.githubusercontent.com/daymissed/tv/main/tv.m3u （[江西移动来源及2026年更新记录](https://github.com/daymissed/tv)，仅补充非核心频道；运营商限制需实际检查）
+- https://iptv-org.github.io/iptv/categories/movies.m3u
+- https://iptv-org.github.io/iptv/categories/series.m3u
+- https://raw.githubusercontent.com/iptv-org/iptv/master/streams/kr.m3u
+- https://raw.githubusercontent.com/iptv-org/iptv/master/streams/jp.m3u
+- https://raw.githubusercontent.com/iptv-org/iptv/master/streams/us_xumo.m3u
+- https://raw.githubusercontent.com/iptv-org/iptv/master/streams/us_roku.m3u
+
+另读取两个 TVBox TXT 作为**江西历史备用候选**，仅转换江西频道，不能注入或改写核心频道：
+
+- https://raw.githubusercontent.com/oceanechy/tansuotv/main/jxtv.txt
+- https://raw.githubusercontent.com/oops1996/-tvbox-live/66ef0813ff3ae9f2a91f7be22ba58b40e8a0ad65/live.txt （本仓库换成公网源前的固定历史版本）
+
+历史线路不代表仍在维护或跨运营商可用，也不直接复制进当前 `live.txt`；每次和其他候选一样复测，通过才纳入。
+
+这些补充文件仅为新增频道提供线路，不混入原有 25 个核心频道，保留原先的线路来源优先级。
+
+ 后缀，也不改写原有查询参数和请求设置。其余不支持的控制字符、协议或额外 header/DRM 依赖继续排除。
+
+`daymissed/tv` 在 2026 年有更新记录，但它的江西移动线路可能在 GitHub runner、南昌电信等外网环境无法访问；它仅是经检查后可能纳入的**候选**，不保证本地频道新增成功。它的“南昌都市”按源原名标注，不擅自认作官方目前列出的“南昌文旅”。检查失败就不发布，不将运营商内网直播地址当作通用公网源。
 
 ## 扩展频道
 
@@ -41,7 +80,7 @@
 
 | 分组 | 候选频道 |
 | --- | --- |
-| 江西本地 | 江西二套都市、三套经济生活、五套公共农业、六套少儿、七套新闻、八套移动，江西教育，以及南昌新闻综合、赣州新闻综合/公共/教育、萍乡新闻综合、抚州公共 |
+| 江西本地 | 江西二套都市、三套经济生活、五套公共农业、六套少儿、七套新闻、八套移动，江西教育，以及南昌新闻综合/都市/资讯/公共、赣州新闻综合/公共/教育、萍乡新闻综合、抚州公共 |
 | 电视剧场 | 第一剧场、风云剧场、怀旧剧场、都市剧场、欢笑剧场、湖南电视剧、福建电视剧、淘剧场 |
 | 电影频道 | CHC家庭影院、CHC动作电影、动作电影、天映频道、天映经典、纬来电影、龙祥电影、淘电影、NewTV动作电影、黑莓电影、超级电影、精品电影、高清电影、MovieSphere、Hallmark Movies & More、NEW K.MOVIES、Universal Monsters |
 | 美剧频道 | CSI美国/迈阿密/纽约、海滩救护队、行尸走肉宇宙、星际迷航美国版、Murder She Wrote、Universal Action、Universal Crime |
