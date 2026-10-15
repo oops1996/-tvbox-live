@@ -1,9 +1,6 @@
 name: Update live TV playlist
 
 on:
-  schedule:
-    # UTC 01:23 / 13:23 = 北京时间 09:23 / 21:23.
-    - cron: "23 1,13 * * *"
   workflow_dispatch:
   push:
     branches: [main]
